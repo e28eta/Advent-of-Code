@@ -41,12 +41,16 @@ enum Direction: Character {
     }
 }
 
-enum KeyPadNumber: Int {
+protocol KeyPad: CustomStringConvertible {
+    func moving(_ direction: Direction) -> Self
+}
+
+enum KeyPadImagined: Int, KeyPad {
     case One = 1, Two, Three
     case Four, Five, Six
     case Seven, Eight, Nine
 
-    func moving(_ direction: Direction) -> KeyPadNumber {
+    func moving(_ direction: Direction) -> KeyPadImagined {
         switch (self, direction) {
         case (.One, .Up), (.One, .Left), (.Two, .Left), (.Four, .Up): return .One
         case (.One, .Right), (.Two, .Up), (.Three, .Left), (.Five, .Up): return .Two
@@ -59,27 +63,91 @@ enum KeyPadNumber: Int {
         case (.Six, .Down), (.Eight, .Right), (.Nine, .Right), (.Nine, .Down): return .Nine
         }
     }
+
+    var description: String {
+        return self.rawValue.description
+    }
 }
 
-func bathroomCode(_ lines: [String]) -> String {
-    return lines.reduce(("", KeyPadNumber.Five)) {
+func bathroomCode(_ lines: [String], initial: KeyPad) -> String {
+    return lines.reduce(("", initial)) {
         let (code, currentNumber) = $0
         let directions = Direction.parse($1)
 
         let nextNumber = directions.reduce(currentNumber) { $0.moving($1) }
-        return (code + nextNumber.rawValue.description, nextNumber)
+        return (code + nextNumber.description, nextNumber)
     }.0
 }
 
 let example = ["ULL", "RRDDD", "LURDL", "UUUUD"]
-assert(bathroomCode(example) == "1985")
+assert(bathroomCode(example, initial: KeyPadImagined.Five) == "1985")
 
 
 let input = try readResourceFile("input.txt").trimmingCharacters(in: .whitespacesAndNewlines)
 let instructionLines = input.components(separatedBy: "\n")
 
-let part1Answer = bathroomCode(instructionLines)
+let part1Answer = bathroomCode(instructionLines, initial: KeyPadImagined.Five)
 
 assert(part1Answer == "76792")
+
+/*:
+ # Part Two
+
+ You finally arrive at the bathroom (it's a several minute walk from the lobby so visitors can behold the many fancy conference rooms and water coolers on this floor) and go to punch in the code. Much to your bladder's dismay, the keypad is not at all like you imagined it. Instead, you are confronted with the result of hundreds of man-hours of bathroom-keypad-design meetings:
+
+ ````
+     1
+   2 3 4
+ 5 6 7 8 9
+   A B C
+     D
+ ````
+
+ You still start at "5" and stop when you're at an edge, but given the same instructions as above, the outcome is very different:
+
+ You start at "5" and don't move at all (up and left are both edges), ending at `5`.
+ Continuing from "5", you move right twice and down three times (through "6", "7", "B", "D", "D"), ending at `D`.
+ Then, from "D", you move five more times (through "D", "B", "C", "C", "B"), ending at `B`.
+ Finally, after five more moves, you end at `3`.
+ So, given the actual keypad layout, the code would be `5DB3`.
+
+ Using the same instructions in your puzzle input, what is the correct **bathroom code**?
+ */
+
+
+enum KeyPadActual: String, KeyPad {
+    case One = "1"
+    case Two = "2", Three = "3", Four = "4"
+    case Five = "5", Six = "6", Seven = "7", Eight = "8", Nine = "9"
+    case A = "A", B = "B", C = "C"
+    case D = "D"
+
+    func moving(_ direction: Direction) -> KeyPadActual {
+        switch (self, direction) {
+        case (.One, .Up), (.One, .Left), (.One, .Right), (.Three, .Up): return .One
+        case (.Two, .Left), (.Two, .Up), (.Three, .Left), (.Six, .Up): return .Two
+        case (.One, .Down), (.Two, .Right), (.Four, .Left), (.Seven, .Up): return .Three
+        case (.Three, .Right), (.Four, .Up), (.Four, .Right), (.Eight, .Up): return .Four
+        case (.Five, .Up), (.Five, .Left), (.Five, .Down), (.Six, .Left): return .Five
+        case (.Two, .Down), (.Five, .Right), (.Seven, .Left), (.A, .Up): return .Six
+        case (.Three, .Down), (.Six, .Right), (.Eight, .Left), (.B, .Up): return .Seven
+        case (.Four, .Down), (.Seven, .Right), (.Nine, .Left), (.C, .Up): return .Eight
+        case (.Eight, .Right), (.Nine, .Up), (.Nine, .Right), (.Nine, .Down): return .Nine
+        case (.Six, .Down), (.A, .Left), (.A, .Down), (.B, .Left): return .A
+        case (.Seven, .Down), (.A, .Right), (.C, .Left), (.D, .Up): return .B
+        case (.Eight, .Down), (.B, .Right), (.C, .Right), (.C, .Down): return .C
+        case (.B, .Down), (.D, .Left), (.D, .Right), (.D, .Down): return .D
+        }
+    }
+
+    var description: String {
+        return self.rawValue
+    }
+}
+
+assert(bathroomCode(example, initial: KeyPadActual.Five) == "5DB3")
+
+let part2Answer = bathroomCode(instructionLines, initial: KeyPadActual.Five)
+assert(part2Answer == "A7AC3")
 
 //: [Next](@next)
