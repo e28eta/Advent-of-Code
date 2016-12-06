@@ -39,15 +39,36 @@ enum Turn: String {
     case Right = "R", Left = "L"
 }
 
+struct Coordinate: Hashable {
+    var northSouth: Int
+    var eastWest: Int
+
+    init() {
+        northSouth = 0
+        eastWest = 0
+    }
+
+    var total: Int {
+        return abs(northSouth) + abs(eastWest)
+    }
+
+    static func ==(_ lhs: Coordinate, _ rhs: Coordinate) -> Bool {
+        return lhs.northSouth == rhs.northSouth && lhs.eastWest == rhs.eastWest
+    }
+
+    var hashValue: Int {
+        // expect to cluster around zero, so this is probably fine
+        return (northSouth << 16 + eastWest).hashValue
+    }
+}
+
 struct Position {
     var currentDirection: Direction
-    var northSouthDistance: Int
-    var eastWestDistance: Int
+    var distance: Coordinate
 
     init() {
         currentDirection = .North
-        northSouthDistance = 0
-        eastWestDistance = 0
+        distance = Coordinate()
     }
 
     func taking(steps: [Step]) -> Position {
@@ -58,19 +79,22 @@ struct Position {
         return position
     }
 
-    mutating func take(step: Step) {
+    mutating func take(step: Step) -> [Coordinate] {
+        var visitedCoordinates: [Coordinate] = []
         currentDirection = currentDirection.turning(step.direction)
 
-        switch currentDirection {
-        case .North: northSouthDistance += step.distance
-        case .South: northSouthDistance -= step.distance
-        case .East: eastWestDistance += step.distance
-        case .West: eastWestDistance -= step.distance
-        }
-    }
+        for _ in (0..<step.distance) {
+            switch currentDirection {
+            case .North: distance.northSouth += 1
+            case .South: distance.northSouth -= 1
+            case .East: distance.eastWest += 1
+            case .West: distance.eastWest -= 1
+            }
 
-    var totalDistanceFromStart: Int {
-        return abs(eastWestDistance) + abs(northSouthDistance)
+            visitedCoordinates.append(distance)
+        }
+
+        return visitedCoordinates
     }
 }
 
@@ -102,7 +126,7 @@ struct Step: CustomStringConvertible {
 
 func totalDistance(_ steps: String) -> Int {
     do {
-        return try Position().taking(steps: Step.parse(steps: steps)).totalDistanceFromStart
+        return try Position().taking(steps: Step.parse(steps: steps)).distance.total
     } catch {
         return -1
     }
@@ -116,8 +140,54 @@ assert(totalDistance("R5, L5, R5, R3") == 12)
 let stepsString = try readResourceFile("input.txt")
 
 // Part 1 answer:
-totalDistance(stepsString)
+let part1Answer = totalDistance(stepsString)
+
+assert(part1Answer == 353) // now that we know it, check for regressions
+
+/*:
+ # Part Two
+
+ Then, you notice the instructions continue on the back of the Recruiting Document. Easter Bunny HQ is actually at the first location you visit twice.
+
+ For example, if your instructions are `R8, R4, R4, R8`, the first location you visit twice is `4` blocks away, due East.
+
+ How many blocks away is the **first location you visit twice**?
+ */
+
+func distanceToFirstRepeatedLocation(_ steps: String) -> Int {
+    var visitedCoordinates = Set<Coordinate>()
+    var position = Position()
+    var repeatedCoordinate: Coordinate? = nil
+
+    visitedCoordinates.insert(position.distance)
+
+    do {
+        let steps = try Step.parse(steps: steps)
+
+        eachStep: for step in steps {
+            for coordinate in position.take(step: step) {
+                if visitedCoordinates.insert(coordinate).inserted == false {
+                    repeatedCoordinate = coordinate
+                    break eachStep
+                }
+            }
+        }
+
+        if let repeatedCoordinate = repeatedCoordinate {
+            return repeatedCoordinate.total
+        } else {
+            return -1
+        }
+    } catch {
+        return -1
+    }
+}
 
 
+assert(distanceToFirstRepeatedLocation("R8, R4, R4, R8") == 4)
+
+let part2Answer = distanceToFirstRepeatedLocation(stepsString)
+
+assert(part2Answer == 152)
 
 //: [Next](@next)
