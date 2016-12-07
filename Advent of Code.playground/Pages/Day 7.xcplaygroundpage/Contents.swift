@@ -27,12 +27,34 @@ let exampleResult = examples.map { example in
 assert(exampleResult == [true, false, false, true])
 
 let input = try readResourceFile("input.txt").components(separatedBy: .newlines)
+let parseStates = input.map { $0.characters.reduce(ParseState()) { $0.handlingCharacter($1) }}
 
-let part1Answer = input.map { $0.characters.reduce(ParseState()) { $0.handlingCharacter($1) }}.filter { $0.tlsState.supportsTLS }.count
+let part1Answer = parseStates.filter { $0.tlsState.supportsTLS }.count
 assert(part1Answer == 118)
 
 /*:
- 
+ # Part Two
+
+ You would also like to know which IPs support **SSL** (super-secret listening).
+
+ An IP supports SSL if it has an Area-Broadcast Accessor, or **ABA**, anywhere in the supernet sequences (outside any square bracketed sections), and a corresponding Byte Allocation Block, or **BAB**, anywhere in the hypernet sequences. An ABA is any three-character sequence which consists of the same character twice with a different character between them, such as `xyx` or `aba`. A corresponding BAB is the same characters but in reversed positions: `yxy` and `bab`, respectively.
+
+ For example:
+
+ `aba[bab]xyz` supports SSL (`aba` outside square brackets with corresponding `bab` within square brackets).
+ `xyx[xyx]xyx` does not support SSL (`xyx`, but no corresponding `yxy`).
+ `aaa[kek]eke` supports SSL (`eke` in supernet with corresponding `kek` in hypernet; the `aaa` sequence is not related, because the interior character must be different).
+ `zazbz[bzb]cdb` supports SSL (`zaz` has no corresponding `aza`, but `zbz` has a corresponding `bzb`, even though `zaz` and `zbz` overlap).
+ How many IPs in your puzzle input support SSL?
  */
+
+let examplesPart2 = ["aba[bab]xyz", "xyx[xyx]xyx", "aaa[kek]eke", "zazbz[bzb]cdb"]
+let examplePart2Result = examplesPart2.map { example in example.characters.reduce(ParseState()) { $0.handlingCharacter($1) }.supportsSSL}
+assert(examplePart2Result == [true, false, true, true])
+
+let part2Answer = parseStates.filter { $0.supportsSSL }.count
+assert(part2Answer == 260)
+
+
 
 //: [Next](@next)
