@@ -33,8 +33,8 @@ assert(exampleAnswerPart2 == "8f")
 
 let input = "ojvtpuvg"
 
-//let part1Answer = solvePartOne(input, start: 0, length: 8)
-//assert(part1Answer == "4543c154")
+let part1Answer = solvePartOne(input, start: 0, length: 8)
+assert(part1Answer == "4543c154")
 
 /*:
  # Part Two
@@ -55,5 +55,10 @@ let input = "ojvtpuvg"
  Given the actual Door ID and this new method, **what is the password**? Be extra proud of your solution if it uses a cinematic "decrypting" animation.
  */
 
+let part2ExampleAnswer = solvePartTwo(exampleInput, start: 3231928, length: 8, end: 5357526)
+assert(part2ExampleAnswer == "_5__e___")
+
+let part2Answer = solvePartTwo(input, start: 0, length: 8)
+assert(part2Answer == "1050cbbd")
 
 //: [Next](@next)
