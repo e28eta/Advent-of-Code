@@ -74,7 +74,7 @@ let example = ["eedadn", "drvtee", "eandsr", "raavrd", "atevrs", "tsrnev", "sdtt
 let exampleFrequencies = buildFrequencies(example)
 assert(correctErrors(exampleFrequencies) == "easter")
 
-let input = try readResourceFile("input.txt").trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: .newlines)
+let input = try readResourceFile("input.txt").components(separatedBy: .newlines)
 let part1Frequencies = buildFrequencies(input)
 let part1Answer = correctErrors(part1Frequencies)
 

@@ -97,7 +97,7 @@ assert(testRooms.map { $0.isReal } == [true, true, true, false])
 assert(Room.realRoomSectorIdSum(testRooms) == 1514)
 
 
-let input = try readResourceFile("input.txt").trimmingCharacters(in: .whitespacesAndNewlines)
+let input = try readResourceFile("input.txt")
 let rooms = input.components(separatedBy: .newlines).flatMap { Room($0) }
 let realRooms = rooms.filter { $0.isReal }
 let part1Answer = realRooms.reduce(0) { $0 + $1.sectorID }

@@ -83,7 +83,7 @@ let example = ["ULL", "RRDDD", "LURDL", "UUUUD"]
 assert(bathroomCode(example, initial: KeyPadImagined.Five) == "1985")
 
 
-let input = try readResourceFile("input.txt").trimmingCharacters(in: .whitespacesAndNewlines)
+let input = try readResourceFile("input.txt")
 let instructionLines = input.components(separatedBy: "\n")
 
 let part1Answer = bathroomCode(instructionLines, initial: KeyPadImagined.Five)

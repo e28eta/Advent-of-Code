@@ -23,7 +23,7 @@ func isTriangle(_ lengths: [Int]) -> Bool {
 
 assert(isTriangle([5, 10, 25]) == false)
 
-let input = try readResourceFile("input.txt").trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: "\n")
+let input = try readResourceFile("input.txt").components(separatedBy: "\n")
 let sideLengths = input.map { s -> [Int] in
     let lengths = s.components(separatedBy: .whitespaces).map {
         Int($0, radix: 10)!

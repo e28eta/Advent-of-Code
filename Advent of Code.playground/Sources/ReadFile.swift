@@ -6,5 +6,5 @@ public func readResourceFile(_ fileName: String) throws -> String {
                       code: NSFileNoSuchFileError,
                       userInfo: nil)
     }
-    return try String(contentsOf: path, encoding: .utf8)
+    return try String(contentsOf: path, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
 }
