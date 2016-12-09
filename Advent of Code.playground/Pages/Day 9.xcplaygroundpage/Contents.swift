@@ -74,9 +74,106 @@ assert(decompress("X(8x2)(3x3)ABCY") == "X(3x3)ABC(3x3)ABCY")
 
 let input = try readResourceFile("input.txt")
 
-let decompressedInput = decompress(input)
-assert(decompressedInput.unicodeScalars.count == 138735)
+//let decompressedInput = decompress(input)
+//assert(decompressedInput.unicodeScalars.count == 138735)
 
+/*:
+ # Part Two
 
+ Apparently, the file actually uses **version two** of the format.
+
+ In version two, the only difference is that markers within decompressed data **are** decompressed. This, the documentation explains, provides much more substantial compression capabilities, allowing many-gigabyte files to be stored in only a few kilobytes.
+
+ For example:
+
+ `(3x3)XYZ` still becomes `XYZXYZXYZ`, as the decompressed section contains no markers.
+ `X(8x2)(3x3)ABCY` becomes `XABCABCABCABCABCABCY`, because the decompressed data from the `(8x2)` marker is then further decompressed, thus triggering the `(3x3)` marker twice for a total of six `ABC` sequences.
+ `(27x12)(20x12)(13x14)(7x10)(1x12)A` decompresses into a string of `A` repeated `241920` times.
+ `(25x3)(3x3)ABC(2x3)XY(5x2)PQRSTX(18x9)(3x2)TWO(5x7)SEVEN` becomes `445` characters long.
+ Unfortunately, the computer you brought probably doesn't have enough memory to actually decompress the file; you'll have to **come up with another way** to get its decompressed length.
+
+ What is the **decompressed length** of the file using this improved format?
+ */
+
+indirect enum AST {
+    case CompoundText(chunks: [AST])
+    case RepeatedText(chunk: AST, count: Int)
+    case PlainString(length: Int, text: String)
+
+    init(_ string: String) {
+        var chunks: [AST] = []
+        var text = ""
+        var length = 0
+        var iterator = string.characters.makeIterator()
+
+        while let nextCharacter = iterator.next() {
+            if nextCharacter != "(" {
+                text.append(nextCharacter)
+                length += 1
+                continue
+            }
+
+            if length > 0 {
+                chunks.append(.PlainString(length: length, text: text))
+                length = 0
+                text = ""
+            }
+
+            // Handle a marker
+            var marker = ""
+            while let markerCharacter = iterator.next(), markerCharacter != ")" {
+                marker.append(markerCharacter)
+            }
+
+            var markerNums = marker.components(separatedBy: "x")
+            guard let charCount = Int(markerNums[0], radix: 10), let repeatCount = Int(markerNums[1], radix: 10) else {
+                fatalError("malformed marker: \(marker)")
+            }
+
+            var repeatedText = ""
+            for _ in 0..<charCount {
+                guard let c = iterator.next() else { fatalError("not enough characters") }
+                repeatedText.append(c)
+            }
+            chunks.append(.RepeatedText(chunk: AST(repeatedText), count: repeatCount))
+        }
+
+        if length > 0 {
+            chunks.append(.PlainString(length: length, text: text))
+        }
+
+        if chunks.isEmpty {
+            print("empty string? '\(string)'")
+            self = .PlainString(length: 0, text: "")
+        } else if chunks.count == 1 {
+            self = chunks[0]
+        } else {
+            self = .CompoundText(chunks: chunks)
+        }
+    }
+
+    var length: Int {
+        switch self {
+        case let .PlainString(length, _):
+            return length
+        case let .CompoundText(chunks):
+            return chunks.reduce(0) { $0 + $1.length }
+        case let .RepeatedText(chunk, count):
+            return chunk.length * count
+        }
+    }
+}
+
+assert(AST("ADVENT").length == 6)
+assert(AST("A(1x5)BC").length == 7)
+assert(AST("(3x3)XYZ").length == 9)
+assert(AST("A(2x2)BCD(2x2)EFG").length == 11)
+assert(AST("(6x1)(1x3)A").length == 3)
+assert(AST("X(8x2)(3x3)ABCY").length == 20)
+assert(AST("(27x12)(20x12)(13x14)(7x10)(1x12)A").length == 241920)
+assert(AST("(25x3)(3x3)ABC(2x3)XY(5x2)PQRSTX(18x9)(3x2)TWO(5x7)SEVEN").length == 445)
+
+let part2Answer = AST(input).length
+assert(part2Answer == 11125026826)
 
 //: [Next](@next)
