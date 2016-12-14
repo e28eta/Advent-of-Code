@@ -30,13 +30,19 @@ extension String {
         }
     }
 
-    public func randomDataStream() -> AnySequence<(Int, String)> {
+    public func randomDataStream(withStretching: Bool = false) -> AnySequence<(Int, String)> {
         return AnySequence<(Int, String)> { () -> AnyIterator<(Int, String)> in
             var index = -1
 
             return AnyIterator<(Int, String)> {
                 index += 1
-                let candidate = (self + String(index, radix: 10)).md5()
+                var candidate = (self + String(index, radix: 10)).md5()
+
+                if withStretching {
+                    for _ in (0..<2016) {
+                        candidate = candidate.md5()
+                    }
+                }
 
                 return (index, candidate)
             }

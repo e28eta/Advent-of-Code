@@ -61,4 +61,13 @@ let part1Answer = keys[63]
  Eventually, index `22551` produces the `64`th key (triple `fff` with matching `fffff` at index `22859`.
  Given the actual salt in your puzzle input and using `2016` extra MD5 calls of key stretching, **what index** now produces your `64`th one-time pad key?
  */
+
+let examplePart2Hashes = "abc".randomDataStream(withStretching: true)
+assert(examplePart2Hashes.makeIterator().next()?.1 == "a107ff634856bb300138cac6568c0f24")
+
+let examplePart2Answer = Array(CandidateKeys(dataStream: examplePart2Hashes).keyStream.prefix(1))[0]
+assert(examplePart2Answer == 10)
+
+let part2Answer = Array(CandidateKeys(dataStream: input.randomDataStream(withStretching: true)).keyStream.prefix(64))[63]
+assert(part2Answer == 20092)
 //: [Next](@next)
