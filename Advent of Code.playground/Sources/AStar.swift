@@ -63,28 +63,28 @@ public class AStarSearch<State: SearchState> where State.Cost: Comparable {
         openList.push(Step(state: initial, goal: goal))
 
         while let current = openList.pop() {
-            print("considering state:\n", current.state)
+//            print("considering state:\n", current.state)
             if closedList.contains(current.state) {
                 // Since I can't check openList.contains(), just ignore duplicates
                 // when they come out of the openList
-                print("found on closed list")
+//                print("found on closed list")
                 continue
             }
             if current.state == goal {
-                print("found the goal")
+//                print("found the goal")
                 return path(to: current)
             } else {
-                print("not the goal")
+//                print("not the goal")
                 closedList.insert(current.state)
 
-                print("going to look at adjacent states")
+//                print("going to look at adjacent states")
                 for adjacentState in current.state.adjacentStates() {
-                    print("adjacent state\n", adjacentState.state)
+//                    print("adjacent state\n", adjacentState.state)
                     if closedList.contains(adjacentState.state) {
                         continue
                     }
 
-                    print("pushing onto openList")
+//                    print("pushing onto openList")
                     let step = Step(state: adjacentState.state,
                                     goal: goal,
                                     parent: current,
@@ -95,7 +95,7 @@ public class AStarSearch<State: SearchState> where State.Cost: Comparable {
             }
         }
 
-        print("ran out of possibilities")
+//        print("ran out of possibilities")
 
         return nil
     }

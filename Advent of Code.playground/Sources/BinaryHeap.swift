@@ -16,7 +16,7 @@ public class BinaryHeap<Element: Comparable & AnyObject & CustomStringConvertibl
         } else if o1 > o2 {
             return .compareGreaterThan
         } else {
-            print("ERROR: NOT totally ordered")
+//            print("ERROR: NOT totally ordered")
             return p1 < p2 ? .compareLessThan : .compareGreaterThan
         }
     }
