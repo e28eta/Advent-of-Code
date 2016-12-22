@@ -21,7 +21,7 @@ public class BinaryHeap<Element: Comparable & AnyObject & CustomStringConvertibl
         }
     }
 
-    var heap: CFBinaryHeap
+    let heap: CFBinaryHeap
 
     public init() {
         var callbacks = CFBinaryHeapCallBacks(
@@ -79,11 +79,6 @@ public class BinaryHeap<Element: Comparable & AnyObject & CustomStringConvertibl
         CFBinaryHeapRemoveMinimumValue(heap)
 
         return Unmanaged<Element>.fromOpaque(result).takeUnretainedValue()
-    }
-
-    public func contains(_ e: Element) -> Bool {
-        let pointer = Unmanaged<Element>.passRetained(e).toOpaque()
-        return CFBinaryHeapContainsValue(heap, pointer)
     }
 }
 

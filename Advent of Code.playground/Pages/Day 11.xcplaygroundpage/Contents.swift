@@ -212,7 +212,8 @@ struct Floor {
     }
 
     func isValid() -> Bool {
-        return (unpaired[.generator].count > 0 && unpaired[.chip].count > 0) || unpaired[.generator].count == 0
+        // Only safe when either no unpaired chips, or no generators (paired or not)
+        return unpaired.chips.count == 0 || (unpaired.generators.count == 0 && paired.count == 0)
     }
 
     mutating func add(_ payload: ElevatorPayload) {
@@ -275,6 +276,10 @@ struct Building: CustomStringConvertible {
     var floors: [Floor]
     var elevatorLocation: Int = 0
 
+    enum Direction {
+        case Up, Down
+    }
+
     init(_ floors: [Floor]) {
         self.floors = floors
     }
@@ -285,9 +290,111 @@ struct Building: CustomStringConvertible {
             return "F\(index + 1) \(elevator) \(floor.unpair().description)"
             }.joined(separator: "\n")
     }
+
+    func moving(payload: ElevatorPayload, direction: Direction) -> Building? {
+        if (elevatorLocation == 0 && direction == .Down) ||
+            (elevatorLocation == floors.count - 1 && direction == .Up) {
+            return nil
+        }
+
+        var result = self
+
+        result.floors[result.elevatorLocation].remove(payload)
+        guard result.floors[result.elevatorLocation].isValid() else {
+            return nil
+        }
+
+        result.elevatorLocation += (direction == .Up ? 1 : -1)
+
+        result.floors[result.elevatorLocation].add(payload)
+        guard result.floors[result.elevatorLocation].isValid() else {
+            return nil
+        }
+
+        return result
+    }
+
+    func goal() -> Building {
+        var result = self
+
+        let finalFloor = result.floors.count - 1
+        result.elevatorLocation = finalFloor
+
+        for (level, floor) in result.floors.dropLast().enumerated() {
+            let floorContents = floor.unpair()
+            result.floors[level].remove(floorContents)
+            result.floors[finalFloor].add(floorContents)
+        }
+
+        return result
+    }
 }
 
+extension SetsOfElements: Hashable {
+    static func ==(_ lhs: SetsOfElements, _ rhs: SetsOfElements) -> Bool {
+        return lhs.chips == rhs.chips && lhs.generators == rhs.generators
+    }
 
+    var hashValue: Int {
+        return self.chips.hashValue &* 31 &+ self.generators.hashValue
+    }
+}
+
+extension Floor: Hashable {
+    static func ==(_ lhs: Floor, _ rhs: Floor) -> Bool {
+        return lhs.unpaired == rhs.unpaired && lhs.paired == rhs.paired
+    }
+
+    var hashValue: Int {
+        return self.unpaired.hashValue &* 31 &+ self.paired.hashValue
+    }
+}
+
+extension Building: Hashable {
+    static func ==(_ lhs: Building, _ rhs: Building) -> Bool {
+        return lhs.elevatorLocation == rhs.elevatorLocation && lhs.floors == rhs.floors
+    }
+
+    var hashValue: Int {
+        return self.floors.reduce(self.elevatorLocation.hashValue) { $0 &* 31 &+ $1.hashValue }
+    }
+}
+
+extension Building: SearchState {
+    func estimatedCost(toReach goal: Building) -> SearchState.Cost {
+        typealias Reduce = (cost: Int, count: Int)
+        return floors.dropLast().reduce((cost: 0, count: 0)) { (answer: Reduce, floor: Floor) -> Reduce in
+            let count = answer.count + floor.paired.count * 2 + floor.unpaired.chips.count + floor.unpaired.generators.count
+
+            return (cost: max(1, 2 * count - 3), count: count)
+            }.cost
+    }
+
+    func adjacentStates() -> AnySequence<(cost: SearchState.Cost, state: Building)> {
+        let unpaired = self.floors[self.elevatorLocation].unpair()
+
+        let allChips = AnyCollection(unpaired.chips)
+        let allGenerators = AnyCollection(unpaired.generators)
+        let twoChips = allChips.combinations(takenBy: 2)
+        let oneChip = allChips.combinations(takenBy: 1)
+        let twoGenerators = allGenerators.combinations(takenBy: 2)
+        let oneGenerator = allGenerators.combinations(takenBy: 1)
+
+        let chips = [oneChip, twoChips].flatMap { $0.map { SetsOfElements(chips: $0) } }
+        let generators = [oneGenerator, twoGenerators].flatMap { $0.map { SetsOfElements(generators: $0) } }
+        let mixed = oneChip.flatMap { chips in oneGenerator.map { generators in SetsOfElements(chips: chips, generators: generators) }}
+
+        let allPayloads = [chips, generators, mixed].flatMap { $0 }
+
+        return AnySequence([Direction.Up, .Down].flatMap { direction in
+            allPayloads.flatMap { payload in
+                self.moving(payload: payload, direction: direction)
+            }
+            }.map { building in
+                (cost: 1, state: building)
+        })
+    }
+}
 
 
 /*
@@ -298,11 +405,19 @@ struct Building: CustomStringConvertible {
  F1 E  .  HM .  LM
  ````
  */
-var b = Building([Floor(chips: [.hydrogen, .lithium]),
+let b = Building([Floor(chips: [.hydrogen, .lithium]),
                   Floor(generators: [.hydrogen]),
                   Floor(generators: [.lithium]),
                   Floor()])
-print(b)
+let path = AStarSearch(initial: b, goal: b.goal()).shortestPath()
+
+if let path = path {
+    print("found solution!")
+    print(path.cost)
+    for step in path.steps {
+        print(step)
+    }
+}
 
 /*:
  # My Input:

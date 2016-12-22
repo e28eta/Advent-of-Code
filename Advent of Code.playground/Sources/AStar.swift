@@ -1,9 +1,6 @@
 import Foundation
 
-/**
- Must be totally ordered via Comparison, and A < B && A > B implies A==B
- */
-public protocol SearchState: Hashable, Comparable {
+public protocol SearchState: Hashable {
     typealias Cost = Int
     typealias Step = (cost: Cost, state: Self)
 
@@ -17,26 +14,19 @@ private class SearchStateStep<State: SearchState>: Comparable, CustomStringConve
     let goal: State
     let parent: SearchStateStep<State>?
     let cost: State.Cost
+    let totalCost: State.Cost
 
     init(state: State, goal: State, parent: SearchStateStep<State>? = nil, cost: State.Cost = 0) {
         self.state = state
         self.goal = goal
         self.parent = parent
         self.cost = cost
+        self.totalCost = cost + (self.parent?.totalCost ?? 0)
     }
 
     static func <(_ lhs: SearchStateStep<State>, _ rhs: SearchStateStep<State>) -> Bool {
         assert(lhs.goal == rhs.goal, "When comparing two SearchStateSteps, they must have the same goal")
-        let leftCostToGoal = lhs.state.estimatedCost(toReach: lhs.goal),
-            rightCostToGoal = rhs.state.estimatedCost(toReach: rhs.goal)
-
-        if leftCostToGoal == rightCostToGoal {
-            // Since this is being used for Heap ordering too, have to make sure 
-            // A < B && A > B implies A==B
-            return lhs.state < rhs.state
-        } else {
-            return leftCostToGoal < rightCostToGoal
-        }
+        return lhs.totalCost + lhs.state.estimatedCost(toReach: lhs.goal) < rhs.totalCost + rhs.state.estimatedCost(toReach: rhs.goal)
     }
 
     static func ==(_ lhs: SearchStateStep<State>, _ rhs: SearchStateStep<State>) -> Bool {
@@ -73,35 +63,46 @@ public class AStarSearch<State: SearchState> where State.Cost: Comparable {
         openList.push(Step(state: initial, goal: goal))
 
         while let current = openList.pop() {
+            print("considering state:\n", current.state)
+            if closedList.contains(current.state) {
+                // Since I can't check openList.contains(), just ignore duplicates
+                // when they come out of the openList
+                print("found on closed list")
+                continue
+            }
             if current.state == goal {
+                print("found the goal")
                 return path(to: current)
             } else {
+                print("not the goal")
                 closedList.insert(current.state)
 
+                print("going to look at adjacent states")
                 for adjacentState in current.state.adjacentStates() {
+                    print("adjacent state\n", adjacentState.state)
                     if closedList.contains(adjacentState.state) {
                         continue
                     }
 
+                    print("pushing onto openList")
                     let step = Step(state: adjacentState.state,
                                     goal: goal,
                                     parent: current,
                                     cost: adjacentState.cost)
-                    if openList.contains(step) {
-                        continue
-                    }
 
                     openList.push(step)
                 }
             }
         }
 
+        print("ran out of possibilities")
+
         return nil
     }
 
     private func path(to goal: Step) -> (cost: State.Cost, steps: [State]) {
-        return goal.pathToInitial().reversed().reduce((cost: 0, steps: Array<State>())) { (sum: (cost: Int, steps: Array<State>), next: Step) -> (Int, Array<State>) in
-            (cost: sum.cost + next.cost, steps: sum.steps + [next.state])
-        }
+        return (cost: goal.totalCost, steps: goal.pathToInitial().reversed().map { step in
+            return step.state
+        })
     }
 }
