@@ -192,6 +192,17 @@ assert(part1Answer.cost == 37)
  What is the minimum number of steps required to bring all of the objects, including these four new ones, to the fourth floor?
  */
 
-var part2 = part1
-part2.floors[0]
+var part2 = Building([Floor(chips: [.elerium, .dilithium, .strontium, .plutonium],
+                            generators: [.elerium, .dilithium, .strontium, .plutonium]),
+                      Floor(chips: [.ruthenium, .curium], generators: [.thulium, .ruthenium, .curium]),
+                      Floor(chips: [.thulium]),
+                      Floor()])
+
+guard let part2Answer = part2.shortestPath() else {
+    fatalError("could not solve part 2")
+}
+
+// This is really slow, but I don't really care
+assert(part2Answer.cost == 61)
+
 //: [Next](@next)

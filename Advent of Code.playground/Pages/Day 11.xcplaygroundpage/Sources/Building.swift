@@ -144,7 +144,7 @@ public struct Floor {
 }
 
 public struct Building: CustomStringConvertible {
-    public var floors: [Floor]
+    var floors: [Floor]
     var elevatorLocation: Int = 0
 
     enum Direction {
