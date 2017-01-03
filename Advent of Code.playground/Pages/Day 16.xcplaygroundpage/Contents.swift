@@ -56,6 +56,22 @@
 
 import Foundation
 
+extension Sequence {
+    func pairs() -> AnySequence<(Self.Iterator.Element, Self.Iterator.Element)> {
+        return AnySequence<(Self.Iterator.Element, Self.Iterator.Element)> { () -> AnyIterator<(Self.Iterator.Element, Self.Iterator.Element)> in
+            var iterator = self.makeIterator()
+
+            return AnyIterator<(Self.Iterator.Element, Self.Iterator.Element)> {
+                guard let first = iterator.next(), let second = iterator.next() else {
+                    return nil
+                }
+
+                return (first, second)
+            }
+        }
+    }
+}
+
 extension String {
     init(_ bits: [Bit]) {
         self = bits.reduce("") { $0 + $1.description }
@@ -92,48 +108,103 @@ enum Bit: CustomStringConvertible {
     }
 }
 
+class DragonCurve {
+    private let numBits: Int
+    private let bits: [Bit]
+    private let joiningBits: [Bit]
+    private let length: Int
 
-func dragonCurve(_ bits: [Bit]) -> [Bit] {
-    var result = bits
-
-    result.append(.zero)
-    result.append(contentsOf: bits.reversed().map(!))
-
-    return result
-}
-
-func dragonCurve(_ bits: [Bit], length: Int) -> [Bit] {
-    var result = bits
-
-    while result.count < length {
-        result = dragonCurve(result)
+    convenience init(_ bits: String, length: Int? = nil) {
+        self.init(bits.toBits(), length: length)
     }
 
-    return Array(result.prefix(length))
-}
+    init(_ bits: [Bit], length: Int? = nil) {
+        self.bits = bits + [.zero] + bits.reversed().map(!)
+        self.numBits = bits.count
 
-assert(dragonCurve("1".toBits()) == "100".toBits())
-assert(dragonCurve("0".toBits()) == "001".toBits())
-assert(dragonCurve("11111".toBits()) == "11111000000".toBits())
-assert(dragonCurve("111100001010".toBits()) == "1111000010100101011110000".toBits())
+        var joining = [Bit.zero]
 
-assert(dragonCurve("10000".toBits(), length: 20) == "10000011110010000111".toBits())
+        if let length = length {
+            while (joining.count * (1 + numBits)) <= length {
+                joining = joining + [.zero] + joining.reversed().map(!)
+            }
+        }
 
-extension Array {
-    func pairs() -> AnySequence<(Element, Element)> {
-        return AnySequence<(Element, Element)> { () -> AnyIterator<(Element, Element)> in
-            var iterator = self.makeIterator()
+        self.joiningBits = joining
+        self.length = length ?? (bits.count * 2 + 1)
+    }
 
-            return AnyIterator<(Element, Element)> {
-                guard let first = iterator.next(), let second = iterator.next() else {
+    subscript(_ index: Int) -> Bit {
+        let bitsPlusJoiner = numBits + 1
+
+        if index % bitsPlusJoiner == numBits {
+            // this is a joining bit
+            return joiningBits[index / bitsPlusJoiner]
+        }
+
+        // not a joining bit, find it in our bits array
+        let moduloIndex = index % (2 * bitsPlusJoiner)
+        assert(moduloIndex != (bitsPlusJoiner-1) && moduloIndex != bitsPlusJoiner + numBits)
+
+        return bits[moduloIndex]
+    }
+
+    subscript(_ range: CountableRange<Int>) -> [Bit] {
+        return range.map { self[$0] }
+    }
+
+    func toString() -> String {
+        return String(self[(0..<length)])
+    }
+
+    func pairs() -> AnySequence<(Bit, Bit)> {
+        return AnySequence<(Bit, Bit)> { () -> AnyIterator<(Bit, Bit)> in
+            var index = 0
+            return AnyIterator<(Bit, Bit)> {
+                if index >= self.length {
                     return nil
+                } else {
+                    defer { index += 2 }
+                    return (self[index], self[index+1])
                 }
-
-                return (first, second)
             }
         }
     }
+
+    func checksum() -> [Bit] {
+        let convertPair: ((Bit, Bit) -> Bit) = {
+            switch ($0, $1) {
+            case (.zero, .zero), (.one, .one):
+                return .one
+            case (.zero, .one), (.one, .zero):
+                return .zero
+            }
+        }
+
+        var result = self.pairs().map(convertPair)
+
+        while result.count % 2 == 0 {
+            result = result.pairs().map(convertPair)
+        }
+        
+        return result
+    }
+
+    func numberOfDigitsPerChecksumDigit() -> Int {
+        // shortcut to figure out the largest power of two the number can be evenly divided by.
+        // That directly correlates with how many digits of the curve are used for each checksum digit
+        return length & -length
+    }
 }
+
+assert(DragonCurve("1").toString() == "100")
+assert(DragonCurve("0").toString() == "001")
+assert(DragonCurve("11111").toString() == "11111000000")
+assert(DragonCurve("111100001010").toString() == "1111000010100101011110000")
+
+assert(DragonCurve("10000", length: 20).toString() == "10000011110010000111")
+
+
 
 func checksum(_ bits: [Bit]) -> [Bit] {
     var result = bits
@@ -152,12 +223,26 @@ func checksum(_ bits: [Bit]) -> [Bit] {
     return result
 }
 
-assert(checksum("110010110100".toBits()) == "100".toBits())
-assert(checksum(dragonCurve("10000".toBits(), length: 20)) == "01100".toBits())
+let exampleChecksumCurve = DragonCurve("1100101101", length: 12)
+assert(exampleChecksumCurve.toString() == "110010110100")
+assert(exampleChecksumCurve.checksum() == "100".toBits())
+assert(DragonCurve("10000", length: 20).checksum() == "01100".toBits())
 
 let input = "11110010111001001".toBits()
 
-let part1Answer = checksum(dragonCurve(input, length: 272))
-String(part1Answer)
+let part1Answer = DragonCurve(input, length: 272).checksum()
+assert(part1Answer == "01110011101111011".toBits())
+
+
+
+/*:
+ # Part Two
+
+ The second disk you have to fill has length 35651584. Again using the initial state in your puzzle input, what is the correct checksum for this disk?
+ */
+
+// let part2Answer = checksum(dragonCurve(input, length: 35651584))
+// print(String(part2Answer))
+
 
 //: [Next](@next)
