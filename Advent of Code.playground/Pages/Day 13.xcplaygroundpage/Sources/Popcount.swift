@@ -13,7 +13,3 @@ extension UInt {
         return result
     }
 }
-
-public func diff(_ a: UInt, _ b: UInt) -> UInt {
-    return max(a, b) - min(a, b)
-}
