@@ -61,108 +61,27 @@
  */
 import Foundation
 
-public enum Tile: CustomStringConvertible {
-    case safe, trap
-
-    public init(_ tile: String.UTF8View.Iterator.Element) {
-        switch tile {
-        case ".".utf8.first!: self = .safe
-        case "^".utf8.first!: self = .trap
-        default: fatalError()
-        }
-    }
-
-    public var description: String {
-        switch self {
-        case .safe: return "."
-        case .trap: return "^"
-        }
-    }
-
-    public static func next(left: Tile, center: Tile, right: Tile) -> Tile {
-        switch (left, center, right) {
-        case (.trap, .trap, .safe): return .trap
-        case (.safe, .trap, .trap): return .trap
-        case (.trap, .safe, .safe): return .trap
-        case (.safe, .safe, .trap): return .trap
-        default: return .safe
-        }
-    }
-}
-
-extension String {
-    public init(_ tiles: [Tile]) {
-        self = tiles.map { $0.description }.joined()
-    }
-
-    public func toTiles() -> [Tile] {
-        return self.utf8.map { Tile($0) }
-    }
-}
-
-struct Row: CustomStringConvertible {
-    let tiles: [Tile]
-
-    init(_ tiles: [Tile]) {
-        self.tiles = tiles
-    }
-
-    init(_ tiles: String) {
-        self.tiles = tiles.toTiles()
-    }
-
-    func nextRow() -> Row {
-        return Row(self.tiles.enumerated().map { (offset: Int, center: Tile) -> Tile in
-            let left: Tile
-
-            if offset == tiles.startIndex {
-                left = .safe
-            } else {
-                left = tiles[offset - 1]
-            }
-
-            let right: Tile
-
-            if offset + 1 == tiles.endIndex {
-                right = .safe
-            } else {
-                right = tiles[offset + 1]
-            }
-            
-            return Tile.next(left: left, center: center, right: right)
-        })
-    }
-
-    func safeTiles() -> Int {
-        return tiles.reduce(0) { $0 + ($1 == .safe ? 1 : 0) }
-    }
-
-    var description: String {
-        return tiles.map { $0.description }.joined()
-    }
-}
 
 let example = Row("..^^.")
 assert(example.nextRow().description == ".^^^^")
 assert(example.nextRow().nextRow().description == "^^..^")
 
-func part1(initial initialRow: Row, numRows: Int) -> Int {
-    var row = initialRow, safeTiles = 0
 
-    for _ in 0..<numRows {
-        safeTiles += row.safeTiles()
-        row = row.nextRow()
-    }
-
-    return safeTiles
-}
-
-assert(part1(initial: Row(".^^.^.^^^^"), numRows: 10) == 38)
+assert(Row(".^^.^.^^^^").safeTiles(numRows: 10) == 38)
 
 let input = try readResourceFile("input.txt")
 
-let part1Answer = part1(initial: Row(input), numRows: 40)
+let part1Answer = Row(input).safeTiles(numRows: 40)
 assert(part1Answer == 1963)
+
+/*:
+ # Part Two
+
+ How many safe tiles are there in a total of 400000 rows?
+ */
+
+let part2Answer = Row(input).safeTiles(numRows: 400000)
+assert(part2Answer == 20009568)
 
 
 //: [Next](@next)
