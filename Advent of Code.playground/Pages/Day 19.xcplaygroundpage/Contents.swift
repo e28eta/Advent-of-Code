@@ -56,11 +56,6 @@ func elfNumber(_ x: UInt32) -> UInt32 {
     return num * 2 + 1
 }
 
-for x: UInt32 in (0...32) {
-    print(x, flp2(x), elfNumber(x))
-}
-
-
 let input: UInt32 = 3012210
 let part1Answer = elfNumber(input)
 assert(part1Answer == 1830117)
@@ -112,6 +107,53 @@ assert(part1Answer == 1830117)
  With the number of Elves given in your puzzle input, **which Elf now gets all the presents?**
  */
 
+func part2(_ numElves: Int) -> Int {
+    var elves = Array(1...numElves)
 
+    var currentElf = 1
+
+    while elves.count > 1 {
+        let elfIndex = elves.index(of: currentElf)!
+
+        let stolenIndex = (elfIndex + (elves.count/2)) % elves.count
+        elves.remove(at: stolenIndex)
+
+        var nextElfIndex = elves.index(of: currentElf)! + 1
+        if nextElfIndex == elves.endIndex {
+            nextElfIndex = elves.startIndex
+        }
+
+        currentElf = elves[nextElfIndex]
+    }
+
+    return elves.first!
+}
+
+func part2Math(_ numElves: Int) -> Int {
+    let dNumElves = Double(numElves)
+    let power = Int(log(dNumElves)/log(3.0)) // rounded down to the previous one using Int cast
+    let previousPowerOfThree = pow(3.0, Double(power))
+
+    let remainder = dNumElves - previousPowerOfThree
+
+    if remainder == 0 {
+        return Int(previousPowerOfThree)
+    } else if remainder <= previousPowerOfThree {
+        return Int(remainder)
+    } else {
+        return Int(2.0 * remainder - previousPowerOfThree)
+    }
+}
+
+for x in (2...Int(pow(3.0, 4))) {
+    let ans = part2(x)
+    let ans2 = part2Math(x)
+    // if ans == 1 { print() }
+    // print(x, ans, ans2, ans2 == ans ? "" : "FAILED: \(ans2 - ans)")
+    assert(ans == ans2)
+}
+
+let part2Answer = part2Math(Int(input))
+assert(part2Answer == 1417887)
 
 //: [Next](@next)
