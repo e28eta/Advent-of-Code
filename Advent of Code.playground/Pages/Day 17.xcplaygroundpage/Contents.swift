@@ -73,7 +73,8 @@ for (passcode, expectedPath) in [("ihgpwlah", "DDRRRD"), ("kglvqrro", "DDUDRLRRU
 }
 
 
-let part1Answer = part1(passcode: "pslxynzg")
+let input = "pslxynzg"
+let part1Answer = part1(passcode: input)
 assert(part1Answer == "DDRRUDLRRD")
 
 
@@ -91,5 +92,19 @@ assert(part1Answer == "DDRRUDLRRD")
  What is the **length of the longest path** that reaches the vault?
  */
 
+func part2(passcode: String) -> Int? {
+    let initialState = SecureVaultRoom(passcode: passcode)
+    let goal = SecureVaultRoom.goal(passcode: passcode)
+    let aStar = AStarSearch(initial: initialState, goal: goal)
+
+    return aStar.longestPath()?.cost
+}
+
+for (passcode, expectedLength) in [("ihgpwlah", 370)/*, ("kglvqrro", 492), ("ulqzkmiv", 830)*/] {
+    assert(part2(passcode: passcode) == expectedLength)
+}
+
+let part2Answer = part2(passcode: input)
+assert(part2Answer == 488)
 
 //: [Next](@next)

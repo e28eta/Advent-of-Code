@@ -57,36 +57,49 @@ public class AStarSearch<State: SearchState> where State.Cost: Comparable {
     }
 
     public func shortestPath() -> (cost: State.Cost, steps: [State])? {
-        let openList = BinaryHeap<Step>()
-        var closedList = Set<State>()
+        return allPaths().makeIterator().next()
+    }
 
-        openList.push(Step(state: initial, goal: goal))
+    public func longestPath() -> (cost: State.Cost, steps: [State])? {
+        return allPaths().suffix(1).makeIterator().next()
+    }
 
-        while let current = openList.pop() {
-            if closedList.contains(current.state) {
-                continue
-            }
-            if current.state == goal {
-                return path(to: current)
-            } else {
-                closedList.insert(current.state)
+    public func allPaths() -> AnySequence<(cost: State.Cost, steps: [State])> {
+        return AnySequence<(cost: State.Cost, steps: [State])> { () -> AnyIterator<(cost: SearchState.Cost, steps: [State])> in 
+            let openList = BinaryHeap<Step>()
+            var closedList = Set<State>()
 
-                for adjacentState in current.state.adjacentStates() {
-                    if closedList.contains(adjacentState.state) {
+            openList.push(Step(state: self.initial, goal: self.goal))
+
+            return AnyIterator<(cost: State.Cost, steps: [State])> {
+                while let current = openList.pop() {
+                    if closedList.contains(current.state) {
                         continue
                     }
 
-                    let step = Step(state: adjacentState.state,
-                                    goal: goal,
-                                    parent: current,
-                                    cost: adjacentState.cost)
+                    if current.state == self.goal {
+                        return self.path(to: current)
+                    } else {
+                        closedList.insert(current.state)
 
-                    openList.push(step)
+                        for adjacentState in current.state.adjacentStates() {
+                            if closedList.contains(adjacentState.state) {
+                                continue
+                            }
+
+                            let step = Step(state: adjacentState.state,
+                                            goal: self.goal,
+                                            parent: current,
+                                            cost: adjacentState.cost)
+
+                            openList.push(step)
+                        }
+                    }
                 }
+                
+                return nil
             }
         }
-
-        return nil
     }
 
     private func path(to goal: Step) -> (cost: State.Cost, steps: [State]) {
