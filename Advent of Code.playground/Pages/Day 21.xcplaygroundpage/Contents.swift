@@ -47,6 +47,21 @@ enum Direction {
     }
 }
 
+extension Array {
+    mutating func rotateLeft(_ distance: Int) {
+        let distance = distance % self.count
+
+        self = Array(self.suffix(from: distance)) + self.prefix(upTo: distance)
+    }
+
+    mutating func rotateRight(_ distance: Int) {
+        let length = self.count
+        let distance = distance % length
+
+        self = Array(self.suffix(distance)) + self.prefix(length - distance)
+    }
+}
+
 enum ScrambleOps {
     case swapPositions(Int, Int)
     case swapLetters(Character, Character)
@@ -82,29 +97,19 @@ enum ScrambleOps {
             fatalError("Unrecognized operation \(string)")
         }
     }
-}
 
-func scrambleOnce(_ password: String, operations: [ScrambleOps]) -> String {
-    var characters = Array(password.characters)
-    let length = characters.count
 
-    let rotateRight = { (distance: Int) -> () in
-        characters = Array(characters.suffix(distance)) + characters.prefix(length - distance)
-    }
-
-    for operation in operations {
-        switch operation {
+    func apply(_ characters: inout [Character]) {
+        switch self {
         case let .swapPositions(x, y):
-            guard x != y else { continue }
+            guard x != y else { return }
 
             swap(&characters[x], &characters[y])
         case let .rotateDirection(dir, distance):
-            let distance = distance % length
-
             if dir == .left {
-                characters = Array(characters.suffix(from: distance)) + characters.prefix(upTo: distance)
+                characters.rotateLeft(distance)
             } else if dir == .right {
-                rotateRight(distance)
+                characters.rotateRight(distance)
             }
         case let .reverse(x, y):
             for (idx, char) in zip(x...y, characters[x...y].reversed()) {
@@ -114,7 +119,7 @@ func scrambleOnce(_ password: String, operations: [ScrambleOps]) -> String {
             let char = characters.remove(at: x)
             characters.insert(char, at: y)
         case let .swapLetters(x, y):
-            guard x != y else { continue }
+            guard x != y else { return }
 
             guard let xIndex = characters.index(of: x) else { fatalError("missing character \(x)") }
             guard let yIndex = characters.index(of: y) else { fatalError("missing character \(y)") }
@@ -123,9 +128,62 @@ func scrambleOnce(_ password: String, operations: [ScrambleOps]) -> String {
         case let .rotateBasedOnLetter(char):
             guard let idx = characters.index(of: char) else { fatalError("missing character \(char)") }
 
-            let rotateAmount = (idx + (idx >= 4 ? 2 : 1)) % length
-            rotateRight(rotateAmount)
+            characters.rotateRight(rotateAmount(for: idx) % characters.count)
         }
+    }
+
+    func revert(_ characters: inout [Character]) {
+        switch self {
+        case let .swapPositions(x, y):
+            guard x != y else { return }
+
+            swap(&characters[x], &characters[y])
+        case let .rotateDirection(dir, distance):
+            if dir == .left {
+                characters.rotateRight(distance)
+            } else if dir == .right {
+                characters.rotateLeft(distance)
+            }
+        case let .reverse(x, y):
+            for (idx, char) in zip(x...y, characters[x...y].reversed()) {
+                characters[idx] = char
+            }
+        case let .move(x, y):
+            let char = characters.remove(at: y)
+            characters.insert(char, at: x)
+        case let .swapLetters(x, y):
+            guard x != y else { return }
+
+            guard let xIndex = characters.index(of: x) else { fatalError("missing character \(x)") }
+            guard let yIndex = characters.index(of: y) else { fatalError("missing character \(y)") }
+
+            swap(&characters[xIndex], &characters[yIndex])
+        case let .rotateBasedOnLetter(char):
+            guard let idx = characters.index(of: char) else { fatalError("missing character \(char)") }
+
+            guard let destinationIndex = indexBeforeRotation(for: idx, length: characters.count) else {
+                fatalError("could not determine reverse rotation amount for \(characters), \(char), \(idx)")
+            }
+            let rotateAmount = (characters.count + destinationIndex) - idx
+            characters.rotateRight(rotateAmount)
+        }
+    }
+
+    func rotateAmount(for characterIndex: Int) -> Int {
+        return characterIndex + (characterIndex >= 4 ? 2 : 1)
+    }
+
+    func indexBeforeRotation(for characterIndex: Int, length: Int) -> Int? {
+        // This only works if rotateAmount is relatively prime for length of characters
+        return (0..<length).first(where: { characterIndex == (($0 + rotateAmount(for: $0)) % length) })
+    }
+}
+
+func scramble(_ password: String, operations: [ScrambleOps]) -> String {
+    var characters = Array(password.characters)
+
+    for operation in operations {
+        operation.apply(&characters)
     }
 
     return String(characters)
@@ -134,14 +192,34 @@ func scrambleOnce(_ password: String, operations: [ScrambleOps]) -> String {
 let example = "abcde"
 let exampleOperations = "swap position 4 with position 0\nswap letter d with letter b\nreverse positions 0 through 4\nrotate left 1 step\nmove position 1 to position 4\nmove position 3 to position 0\nrotate based on position of letter b\nrotate based on position of letter d".components(separatedBy: .newlines).map { ScrambleOps($0) }
 
-assert(scrambleOnce(example, operations: exampleOperations) == "decab")
+assert(scramble(example, operations: exampleOperations) == "decab")
 
 
 let password = "abcdefgh"
 let operations = try readResourceFile("input.txt").components(separatedBy: .newlines).map { ScrambleOps($0) }
 
-let part1 = scrambleOnce(password, operations: operations)
+let part1 = scramble(password, operations: operations)
 assert(part1 == "bdfhgeca")
 
+/*:
+ # Part Two
+
+ You scrambled the password correctly, but you discover that you [can't actually modify](https://en.wikipedia.org/wiki/File_system_permissions) the [password file](https://en.wikipedia.org/wiki/Passwd) on the system. You'll need to un-scramble one of the existing passwords by reversing the scrambling process.
+
+ What is the un-scrambled version of the scrambled password `fbgdceah`?
+ */
+
+func unscramble(_ password: String, operations: [ScrambleOps]) -> String {
+    var characters = Array(password.characters)
+
+    for operation in operations.reversed() {
+        operation.revert(&characters)
+    }
+
+    return String(characters)
+}
+
+let part2 = unscramble("fbgdceah", operations: operations)
+assert(part2 == "gdfcabeh")
 
 //: [Next](@next)
