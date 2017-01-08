@@ -26,112 +26,202 @@
 
 import Foundation
 
-struct Coordinate: Equatable, Comparable {
-    let x: Int, y: Int
 
-    init(_ string: String) {
-        let components = string.components(separatedBy: "-")
-
-        let x = components[0].replacingOccurrences(of: "x", with: "")
-        let y = components[1].replacingOccurrences(of: "y", with: "")
-
-        self.x = Int(x, radix: 10)!
-        self.y = Int(y, radix: 10)!
-    }
-
-    static func ==(lhs: Coordinate, rhs: Coordinate) -> Bool {
-        return lhs.x == rhs.x && lhs.y == rhs.y
-    }
-
-    static func <(lhs: Coordinate, rhs: Coordinate) -> Bool {
-        if lhs.x < rhs.x {
-            return true
-        } else if lhs.x > rhs.x {
-            return false
-        } else {
-            return lhs.y < rhs.y
-        }
-    }
-}
-
-struct Node: Equatable {
-    let location: Coordinate
-
-    let avail: Int
-    let used: Int
-
-    init?(_ string: String) {
-        guard string.hasPrefix("/dev/grid/node-") else { return nil }
-
-        let components = string.replacingOccurrences(of: "/dev/grid/node-", with: "").replacingOccurrences(of: "T", with: "").components(separatedBy: .whitespaces).filter { $0.characters.count > 0 }
-
-        self.location = Coordinate(components[0])
-
-        self.used = Int(components[2], radix: 10)!
-        self.avail = Int(components[3], radix: 10)!
-    }
-
-    func viablePairs(_ frequencies: [Datacenter.AvailableAndCount]) -> Int {
-        guard self.used > 0 else { return 0 }
-
-        var sum = 0
-
-        for (avail, count) in frequencies {
-            if self.used <= avail {
-                sum += count
-            } else {
-                break
-            }
-        }
-
-        if self.used <= self.avail {
-            // don't count self
-            sum -= 1
-        }
-
-        return sum
-    }
-
-    static func ==(lhs: Node, rhs: Node) -> Bool {
-        return lhs.location == rhs.location
-    }
-}
-
-struct Datacenter {
-    let nodes: [Node]
-    typealias AvailableAndCount = (avail: Int, count: Int)
-    let descendingAvailAndCount: [AvailableAndCount]
-
-    init(_ string: String) {
-        self.nodes = string.components(separatedBy: .newlines).flatMap { Node($0) }
-
-        self.descendingAvailAndCount = self.nodes.reduce([:]) { (hash: [Int: Int], node: Node) -> [Int: Int] in
-            var hash = hash
-            let count = hash[node.avail] ?? 0
-            hash[node.avail] = count + 1
-
-            return hash
-            }.map { (avail: Int, count: Int) -> AvailableAndCount in
-                return (avail: avail, count: count)
-            }.sorted {
-                $0.0.avail > $0.1.avail
-        }
-    }
-
-
-    func viablePairs() -> Int {
-        return self.nodes.reduce(0) { (sum, node) in
-            return sum + node.viablePairs(self.descendingAvailAndCount)
-        }
-    }
-
-
-}
-
-let input = try readResourceFile("input.txt")
+let input: String = try readResourceFile("input.txt")
 let datacenter = Datacenter(input)
 
 let part1 = datacenter.viablePairs()
 assert(part1 == 987)
+
+/*:
+ # Part Two ---
+
+ Now that you have a better understanding of the grid, it's time to get to work.
+
+ Your goal is to gain access to the data which begins in the node with `y=0` and the **highest** `x` (that is, the node in the top-right corner).
+
+ For example, suppose you have the following grid:
+
+ ````
+ Filesystem            Size  Used  Avail  Use%
+ /dev/grid/node-x0-y0   10T    8T     2T   80%
+ /dev/grid/node-x0-y1   11T    6T     5T   54%
+ /dev/grid/node-x0-y2   32T   28T     4T   87%
+ /dev/grid/node-x1-y0    9T    7T     2T   77%
+ /dev/grid/node-x1-y1    8T    0T     8T    0%
+ /dev/grid/node-x1-y2   11T    7T     4T   63%
+ /dev/grid/node-x2-y0   10T    6T     4T   60%
+ /dev/grid/node-x2-y1    9T    8T     1T   88%
+ /dev/grid/node-x2-y2    9T    6T     3T   66%
+ ````
+
+ In this example, you have a storage grid `3` nodes wide and `3` nodes tall. The node you can access directly, `node-x0-y0`, is almost full. The node containing the data you want to access, `node-x2-y0` (because it has `y=0` and the highest `x` value), contains 6 [terabytes](https://en.wikipedia.org/wiki/Terabyte) of data - enough to fit on your node, if only you could make enough space to move it there.
+
+ Fortunately, `node-x1-y1` looks like it has enough free space to enable you to move some of this data around. In fact, it seems like all of the nodes have enough space to hold any node's data (except `node-x0-y2`, which is much larger, very full, and not moving any time soon). So, initially, the grid's capacities and connections look like this:
+
+ ````
+ ( 8T/10T) --  7T/ 9T -- [ 6T/10T]
+     |           |           |
+   6T/11T  --  0T/ 8T --   8T/ 9T
+     |           |           |
+  28T/32T  --  7T/11T --   6T/ 9T
+ ````
+
+ The node you can access directly is in parentheses; the data you want starts in the node marked by square brackets.
+
+ In this example, most of the nodes are interchangable: they're full enough that no other node's data would fit, but small enough that their data could be moved around. Let's draw these nodes as `.`. The exceptions are the empty node, which we'll draw as `_`, and the very large, very full node, which we'll draw as `#`. Let's also draw the goal data as `G`. Then, it looks like this:
+
+ ````
+ (.) .  G
+  .  _  .
+  #  .  .
+ ````
+
+ The goal is to move the data in the top right, `G`, to the node in parentheses. To do this, we can issue some commands to the grid and rearrange the data:
+
+ * Move data from `node-y0-x1` to `node-y1-x1`, leaving node `node-y0-x1` empty:
+
+ ````
+ (.) _  G
+  .  .  .
+  #  .  .
+ ````
+
+ * Move the goal data from `node-y0-x2` to `node-y0-x1`:
+ ````
+ (.) G  _
+  .  .  .
+  #  .  .
+ ````
+
+ * At this point, we're quite close. However, we have no deletion command, so we have to move some more data around. So, next, we move the data from `node-y1-x2` to `node-y0-x2`:
+
+ ````
+ (.) G  .
+  .  .  _
+  #  .  .
+ ````
+
+ * Move the data from `node-y1-x1` to `node-y1-x2`:
+
+ ````
+ (.) G  .
+  .  _  .
+  #  .  .
+ ````
+
+ * Move the data from `node-y1-x0` to `node-y1-x1`:
+
+ ````
+ (.) G  .
+  _  .  .
+  #  .  .
+ ````
+
+ * Next, we can free up space on our node by moving the data from `node-y0-x0` to `node-y1-x0`:
+
+ ````
+ (_) G  .
+  .  .  .
+  #  .  .
+ ````
+
+ * Finally, we can access the goal data by moving the it from `node-y0-x1` to `node-y0-x0`:
+
+ ````
+ (G) _  .
+  .  .  .
+  #  .  .
+ ````
+
+ So, after `7` steps, we've accessed the data we want. Unfortunately, each of these moves takes time, and we need to be efficient:
+
+ **What is the fewest number of steps** required to move your goal data to `node-x0-y0`?
+
+ */
+
+extension Datacenter: CustomStringConvertible {
+    public var description: String {
+        var result = ""
+
+        for y in (0...self.maxY) {
+            for x in (0...self.maxX) {
+                if x == 0 && y == 0 {
+                    result += "0"
+                    continue
+                } else if x == maxX && y == 0 {
+                    result += "G"
+                    continue
+                }
+
+                guard let node = nodes.first(where: { $0.location == Coordinate(x: x, y: y) }) else {
+                    result += " "
+                    continue
+                }
+
+                if node.used == 0 {
+                    result += "_"
+                } else if node.used <= self.maxAvailable {
+                    result += "."
+                } else {
+                    result += "#"
+                }
+            }
+            result += "\n"
+        }
+
+        return result
+    }
+}
+
+print(datacenter)
+
+/*:
+ well, that's a spectacularly uninteresting set of Nodes:
+ ````
+ 0................................G
+ ..................................
+ ..################################
+ ..................................
+ ..................................
+ ..................................
+ ..................................
+ ..................................
+ ..................................
+ ..................................
+ ..................................
+ ..................................
+ ..................................
+ ..................................
+ ..................................
+ ..................................
+ ..................................
+ ..................................
+ ..................................
+ ..................................
+ ..................................
+ ..................................
+ ..................................
+ ..................................
+ ..................................
+ ...._.............................
+ ..................................
+ ..................................
+ ..................................
+ ..................................
+ ````
+
+ Solved just by counting:
+ 
+ 3 left gets it around the wall
+ 25 up puts it on the first row
+ 32 right puts the G one to the left
+
+ 1 down, 2 left, 1 up, 1 right moves G left again
+ do that 32 times: 32 * 5
+ 
+ total = 220
+ */
+
 
 //: [Next](@next)
