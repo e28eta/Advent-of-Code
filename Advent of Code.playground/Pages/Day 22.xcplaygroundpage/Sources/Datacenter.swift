@@ -1,13 +1,6 @@
 import Foundation
 
-public struct Coordinate: Equatable, Comparable {
-    public let x: Int, y: Int
-
-    public init(x: Int, y: Int) {
-        self.x = x
-        self.y = y
-    }
-
+extension Coordinate {
     public init(_ string: String) {
         let components = string.components(separatedBy: "-")
 
@@ -16,20 +9,6 @@ public struct Coordinate: Equatable, Comparable {
 
         self.x = Int(x, radix: 10)!
         self.y = Int(y, radix: 10)!
-    }
-
-    public static func ==(lhs: Coordinate, rhs: Coordinate) -> Bool {
-        return lhs.x == rhs.x && lhs.y == rhs.y
-    }
-
-    public static func <(lhs: Coordinate, rhs: Coordinate) -> Bool {
-        if lhs.x < rhs.x {
-            return true
-        } else if lhs.x > rhs.x {
-            return false
-        } else {
-            return lhs.y < rhs.y
-        }
     }
 }
 

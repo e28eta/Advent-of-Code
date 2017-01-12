@@ -79,6 +79,6 @@ machine.registers[.a] = 12
 machine.execute()
 
 let part2Answer = machine.registers[.a]
-
+assert(part2Answer == 479009263)
 
 //: [Next](@next)

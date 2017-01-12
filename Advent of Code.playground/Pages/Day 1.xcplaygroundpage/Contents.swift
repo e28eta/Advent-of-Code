@@ -39,26 +39,9 @@ enum Turn: String {
     case Right = "R", Left = "L"
 }
 
-struct Coordinate: Hashable {
-    var northSouth: Int
-    var eastWest: Int
-
-    init() {
-        northSouth = 0
-        eastWest = 0
-    }
-
+extension Coordinate {
     var total: Int {
-        return abs(northSouth) + abs(eastWest)
-    }
-
-    static func ==(_ lhs: Coordinate, _ rhs: Coordinate) -> Bool {
-        return lhs.northSouth == rhs.northSouth && lhs.eastWest == rhs.eastWest
-    }
-
-    var hashValue: Int {
-        // expect to cluster around zero, so this is probably fine
-        return (northSouth << 16 + eastWest).hashValue
+        return abs(y) + abs(x)
     }
 }
 
@@ -85,10 +68,10 @@ struct Position {
 
         for _ in (0..<step.distance) {
             switch currentDirection {
-            case .North: distance.northSouth += 1
-            case .South: distance.northSouth -= 1
-            case .East: distance.eastWest += 1
-            case .West: distance.eastWest -= 1
+            case .North: distance.y += 1
+            case .South: distance.y -= 1
+            case .East: distance.x += 1
+            case .West: distance.x -= 1
             }
 
             visitedCoordinates.append(distance)
