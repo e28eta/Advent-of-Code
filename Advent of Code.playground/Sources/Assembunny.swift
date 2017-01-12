@@ -80,10 +80,10 @@ public enum Instruction: CustomStringConvertible {
 
     public var description: String {
         switch self {
-        case .Copy(_, _): return "cpy"
-        case .Increment(_): return "inc"
-        case .Decrement(_): return "dec"
-        case .JumpNotZero(_, let delta, let lineNumber): return "jnz \(delta) + \(lineNumber))"
+        case let .Copy(src, dest): return "cpy \(src), \(dest)"
+        case .Increment(let reg): return "inc \(reg)"
+        case .Decrement(let reg): return "dec \(reg)"
+        case .JumpNotZero(let test, let delta, let lineNumber): return "jnz \(test): \(delta) + \(lineNumber)"
         case .Add(let dest, let source): return "\(dest) += \(source)"
         case .Subtract(let dest, let source): return "\(dest) -= \(source)"
         case .SetToZero(let reg): return "\(reg) = 0"
@@ -320,7 +320,7 @@ public func controlFlowGraph(_ instructions: [Instruction]) -> [BasicBlock] {
     }
 }
 
-struct Program {
+struct Program: CustomStringConvertible {
     var firstBlock: BasicBlock? { return blocks[0] }
     var blocks: [Int: BasicBlock]
 
@@ -331,10 +331,14 @@ struct Program {
             blocks[block.lineNumber] = block
         }
     }
+
+    var description: String {
+        return blocks.keys.sorted().map { blocks[$0]!.description }.joined(separator: "\n")
+    }
 }
 
 
-public struct Machine {
+public struct Machine: CustomStringConvertible {
     public var registers = RegisterFile()
     var program: Program
 
@@ -359,5 +363,9 @@ public struct Machine {
     
     public mutating func reset() {
         self.registers = RegisterFile()
+    }
+
+    public var description: String {
+        return registers.description + "\n" + program.description
     }
 }

@@ -60,5 +60,25 @@ machine.registers[.a] = 7
 machine.execute()
 
 let part1Answer = machine.registers[.a]
+assert(part1Answer == 12703)
+
+/*:
+ # Part Two
+
+ The safe doesn't open, but it **does** make several angry noises to express its frustration.
+
+ You're quite sure your logic is working correctly, so the only other thing is... you check the painting again. As it turns out, colored eggs are still eggs. Now you count `12`.
+
+ As you run the program with this new input, the prototype computer begins to **overheat**. You wonder what's taking so long, and whether the lack of any instruction more powerful than "add one" has anything to do with it. Don't bunnies usually **multiply**?
+
+ Anyway, **what value** should actually be sent to the safe?
+ */
+
+machine = Machine(input) // can't just reset, because the instructions have been modified!
+machine.registers[.a] = 12
+machine.execute()
+
+let part2Answer = machine.registers[.a]
+
 
 //: [Next](@next)
