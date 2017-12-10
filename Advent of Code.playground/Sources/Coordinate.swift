@@ -1,6 +1,6 @@
 import Foundation
 
-public struct Coordinate: Equatable, Comparable, Hashable {
+public struct Coordinate: Equatable, Comparable, Hashable, CustomStringConvertible {
     public var x: Int, y: Int
 
     public init() {
@@ -30,5 +30,17 @@ public struct Coordinate: Equatable, Comparable, Hashable {
     public var hashValue: Int {
         // assuming we're using small-ish values, I think this is efficient enough
         return (x << 16 + y).hashValue
+    }
+
+    public var description: String {
+        return "(\(x), \(y))"
+    }
+
+    public func distance(to coordinate: Coordinate) -> Int {
+        return diff(coordinate.x, x) + diff(coordinate.y, y)
+    }
+
+    public static func +(_ lhs: Coordinate, _ rhs: (Int, Int)) -> Coordinate {
+        return Coordinate(x: lhs.x + rhs.0, y: lhs.y + rhs.1)
     }
 }

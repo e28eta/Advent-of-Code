@@ -35,6 +35,10 @@
 
 import Foundation
 
-var str = "Hello, playground"
+let example = AirDuct("###########\n#0.1.....2#\n#.#######.#\n#4.......3#\n###########")
+
+print(example, example.wires)
+print("all shortest paths", example.shortestPathLengths)
+print("starting location", example.startLocation)
 
 //: [Next](@next)
