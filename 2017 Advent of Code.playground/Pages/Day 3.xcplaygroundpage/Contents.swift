@@ -40,7 +40,82 @@ let testData = [
 
 let input = 325489
 
+/*
+ ...1^2 == 0
+ ...3^2 == [1: [2, 4, 6, 8], 2: [...]]
+ ...5^2 == [2: [11, 15, 19, 23], 3: [2 +- 1], 4: [3, in same dir]]
+ ...7^2 == [3: [28, 34, 40, 46], 4, 5, 6]
+
+ The direct paths go up by 2, 4, 6 each time, with a difference of the root between last & next
+
+ There are `P=(n^2 - (n-1)^2)` numbers around the perimeter. Can find which side X
+ is on based on dividing `C=P/4` (treating corners as only belonging to a single side)
+ and `S=(X - (n-1)^2)/C` (rounded down, where 0 = right, 1 = top, etc)
+ */
+
+let N = sqrt(9)
+
+struct SpiralMemoryLocation: CustomStringConvertible {
+    /// The identifier for this square/location
+    let square: Int
+
+    /// Which ring contains the memory square for this location?
+    let ring: Int
+    /// What is the previous ring?
+    var previousRing: Int { return max(ring - 2, 0) }
+
+    /// The largest numbered square in this ring
+    var largestNumber: Int { return Int(pow(Double(ring), 2)) }
+    /// The smallest numbered square in this ring
+    var smallestNumber: Int { return Int(pow(Double(previousRing), 2) + 1) }
+
+    /// How many steps out from the access port is this ring?
+    var radius: Int { return (ring - 1) / 2 }
+
+    /// Represents the four sides of the spiral
+    enum Side: Int {
+        case right = 0, top, left, bottom
+    }
+    /// Which side of the spiral is this square on?
+    var side: Side { return Side(rawValue: (square - smallestNumber) / max(ring - 1, 1))! }
+    /// Counting from the smallest number on this side as 0, what position does this square hold?
+    var position: Int { return (square - smallestNumber) % max(ring - 1, 1) }
+
+    var offsetFromCenter: Int {
+        return position - (previousRing / 2)
+    }
+
+    var distanceFromCenter: Int {
+        return radius + abs(offsetFromCenter)
+    }
+
+    init(for x: Int) {
+        precondition(x > 0, "x must be positive")
+
+        self.square = x
+
+        let s = sqrt(Double(x))
+        let candidate = Int(ceil(s))
+
+        if candidate % 2 == 1 {
+            // odd number, fine as-is
+            ring = candidate
+        } else {
+            // even number, need to round up to next odd
+            ring = candidate + 1
+        }
+    }
+
+    var description: String {
+        return "{ radius: \(radius), ring: \(ring), range:\(smallestNumber)...\(largestNumber), side: \(side), position: \(position), offset: \(offsetFromCenter) }"
+    }
 
 
+}
+
+verify(testData, { SpiralMemoryLocation(for: $0).distanceFromCenter })
+
+let location = SpiralMemoryLocation(for: input)
+assertEqual(location.distanceFromCenter, 552)
 
 //: [Next](@next)
