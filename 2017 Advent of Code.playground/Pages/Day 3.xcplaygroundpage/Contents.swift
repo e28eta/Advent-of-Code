@@ -53,17 +53,13 @@ let input = 325489
  and `S=(X - (n-1)^2)/C` (rounded down, where 0 = right, 1 = top, etc)
  */
 
-let N = sqrt(9)
-
-struct SpiralMemoryLocation: CustomStringConvertible {
-    /// The identifier for this square/location
-    let square: Int
-
-    /// Which ring contains the memory square for this location?
+struct SpiralMemoryRing {
+    /// The identifier for this ring
     let ring: Int
+    
     /// What is the previous ring?
     var previousRing: Int { return max(ring - 2, 0) }
-
+    
     /// The largest numbered square in this ring
     var largestNumber: Int { return Int(pow(Double(ring), 2)) }
     /// The smallest numbered square in this ring
@@ -72,24 +68,38 @@ struct SpiralMemoryLocation: CustomStringConvertible {
     /// How many steps out from the access port is this ring?
     var radius: Int { return (ring - 1) / 2 }
 
+    /// How many elements on each side. The last one will be one less than this
+    var sideLength: Int { return max(ring - 1, 1) }
+}
+
+struct SpiralMemoryLocation<T> {
+    /// The identifier for this square/location
+    let square: Int
+    /// The contents of this square
+    let contents: T?
+    
+    /// Which ring contains the memory square for this location?
+    let ring: SpiralMemoryRing
+    
     /// Represents the four sides of the spiral
     enum Side: Int {
         case right = 0, top, left, bottom
     }
     /// Which side of the spiral is this square on?
-    var side: Side { return Side(rawValue: (square - smallestNumber) / max(ring - 1, 1))! }
+    var side: Side { return Side(rawValue: (square - ring.smallestNumber) / ring.sideLength)! }
     /// Counting from the smallest number on this side as 0, what position does this square hold?
-    var position: Int { return (square - smallestNumber) % max(ring - 1, 1) }
+    var position: Int { return (square - ring.smallestNumber) % ring.sideLength }
+    /// Is this a corner square?
 
     var offsetFromCenter: Int {
-        return position - (previousRing / 2)
+        return position - (ring.previousRing / 2)
     }
 
     var distanceFromCenter: Int {
-        return radius + abs(offsetFromCenter)
+        return ring.radius + abs(offsetFromCenter)
     }
 
-    init(for x: Int) {
+    init(for x: Int, with contents: T? = nil) {
         precondition(x > 0, "x must be positive")
 
         self.square = x
@@ -99,23 +109,18 @@ struct SpiralMemoryLocation: CustomStringConvertible {
 
         if candidate % 2 == 1 {
             // odd number, fine as-is
-            ring = candidate
+            ring = SpiralMemoryRing(ring: candidate)
         } else {
             // even number, need to round up to next odd
-            ring = candidate + 1
+            ring = SpiralMemoryRing(ring: candidate + 1)
         }
+        self.contents = contents
     }
-
-    var description: String {
-        return "{ radius: \(radius), ring: \(ring), range:\(smallestNumber)...\(largestNumber), side: \(side), position: \(position), offset: \(offsetFromCenter) }"
-    }
-
-
 }
 
-verify(testData, { SpiralMemoryLocation(for: $0).distanceFromCenter })
+verify(testData, { SpiralMemoryLocation<Void>(for: $0).distanceFromCenter })
 
-let location = SpiralMemoryLocation(for: input)
+let location = SpiralMemoryLocation<Void>(for: input)
 assertEqual(location.distanceFromCenter, 552)
 
 /*:
@@ -143,5 +148,66 @@ assertEqual(location.distanceFromCenter, 552)
 
  What is the first value written that is larger than your puzzle input?
  */
+
+extension SpiralMemoryLocation.Side {
+    func previous() -> SpiralMemoryLocation.Side {
+        switch self {
+        case .right: return .bottom
+        case .top: return .right
+        case .left: return .top
+        case .bottom: return .left
+        }
+    }
+        
+    func next() -> SpiralMemoryLocation.Side {
+        switch self {
+        case .right: return .top
+        case .top: return .left
+        case .left: return .bottom
+        case .bottom: return .right
+        }
+    }
+}
+
+
+extension SpiralMemoryLocation {
+    enum Neighbor {
+        case north, northwest, west, southwest, south, southeast, east, northeast
+        var all: [Neighbor] { return
+            [.north, .northwest, .west, .southwest, .south, .southeast, .east, .northeast]
+        }
+    }
+    enum RadialDirection {
+        // TODO: this isn't sufficient. I think I want to map Neighbor into vectors
+        // can have inward + clockwise, outward + clockwise, outward, counterclockwise, etc.
+        // So, a -1, 0, 1 on each axis, but not both 0. Any way to model that other than
+        // 8-case enum? 
+        // Then ~easy mapping between Side + Neighbor into direction, and then foo() easily
+        // converts into the location in the spiral
+        case inward, outward, clockwise, counterclockwise
+    }
+    
+    static func foo(ring: Int, side: Side, position: Int) -> (ring: Int, side: Side, position: Int) {
+        let memoryRing = SpiralMemoryRing(ring: ring)
+        switch position {
+        case 0..<memoryRing.sideLength:
+            // This is in-bounds for the ring
+            return (ring: ring, side: side, position: position)
+        case -1:
+            // Wrapped to previous side
+            return (ring: ring, side: side.previous(), position: memoryRing.sideLength - 1)
+        default:
+            // This is actually in a larger ring (conceivably >1 step larger).
+            // Ring numbers jump by two, and the position shifts up by one
+            return foo(ring: ring + 2, side: side, position: position + 1)
+        }
+    }
+}
+struct SpiralMemoryStore<T: Hashable> {
+    var memory: [T: SpiralMemoryLocation<T>] = [:]
+    
+    // iteratively build up indexed list of locations, use populated locations
+    // to calculate the next one, keep going until a memory location's contents exceeds `input` 
+}
 
 //: [Next](@next)
