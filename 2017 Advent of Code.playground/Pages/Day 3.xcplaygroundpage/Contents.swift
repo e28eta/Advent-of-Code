@@ -59,6 +59,8 @@ struct SpiralMemoryRing {
     
     /// What is the previous ring?
     var previousRing: Int { return max(ring - 2, 0) }
+    /// What is the next ring?
+    var nextRing: Int { return ring + 2 }
     
     /// The largest numbered square in this ring
     var largestNumber: Int { return Int(pow(Double(ring), 2)) }
@@ -70,6 +72,8 @@ struct SpiralMemoryRing {
 
     /// How many elements on each side. The last one will be one less than this
     var sideLength: Int { return max(ring - 1, 1) }
+    
+    var offsetRange: CountableClosedRange<Int> { return -1...2 }
 }
 
 struct SpiralMemoryLocation<T> {
@@ -169,45 +173,151 @@ extension SpiralMemoryLocation.Side {
     }
 }
 
+enum SpiralNeighbor {
+    case inward, outward, clockwise, counterclockwise
+    case clockwiseInward, clockwiseOutward, counterclockwiseInward, counterclockwiseOutward
+    
+    static var all: [SpiralNeighbor] {
+        return [
+            .clockwiseInward, .inward, .counterclockwiseInward,
+            .clockwise, .counterclockwise,
+            .clockwiseOutward, .outward, .counterclockwiseOutward
+        ]
+    }
+}
 
 extension SpiralMemoryLocation {
-    enum Neighbor {
-        case north, northwest, west, southwest, south, southeast, east, northeast
-        var all: [Neighbor] { return
-            [.north, .northwest, .west, .southwest, .south, .southeast, .east, .northeast]
+    init(ring: Int, side: Side, position: Int, contents: T? = nil) {
+        precondition(ring > 0, "Cannot have a ring less than 1")
+        
+        guard ring > 1 else {
+            self = SpiralMemoryLocation(for: 1)
+            return
         }
-    }
-    enum RadialDirection {
-        // TODO: this isn't sufficient. I think I want to map Neighbor into vectors
-        // can have inward + clockwise, outward + clockwise, outward, counterclockwise, etc.
-        // So, a -1, 0, 1 on each axis, but not both 0. Any way to model that other than
-        // 8-case enum? 
-        // Then ~easy mapping between Side + Neighbor into direction, and then foo() easily
-        // converts into the location in the spiral
-        case inward, outward, clockwise, counterclockwise
-    }
-    
-    static func foo(ring: Int, side: Side, position: Int) -> (ring: Int, side: Side, position: Int) {
+        
         let memoryRing = SpiralMemoryRing(ring: ring)
         switch position {
         case 0..<memoryRing.sideLength:
             // This is in-bounds for the ring
-            return (ring: ring, side: side, position: position)
+            self.ring = memoryRing
+                // figure out where this falls on the ring
+            self.square = memoryRing.smallestNumber + side.rawValue * memoryRing.sideLength + position
+            self.contents = contents
         case -1:
             // Wrapped to previous side
-            return (ring: ring, side: side.previous(), position: memoryRing.sideLength - 1)
+            self = SpiralMemoryLocation(ring: ring, side: side.previous(), position: memoryRing.sideLength - 1)
         default:
-            // This is actually in a larger ring (conceivably >1 step larger).
-            // Ring numbers jump by two, and the position shifts up by one
-            return foo(ring: ring + 2, side: side, position: position + 1)
+            precondition((-1 ..< memoryRing.sideLength).contains(position))
+            fatalError()
+        }
+    }
+    
+    func allNeighbors() -> [SpiralMemoryLocation] {
+        return SpiralNeighbor.all.map { neighboringLocation(for: $0)}
+    }
+    
+    func neighboringLocation(for neighbor: SpiralNeighbor) -> SpiralMemoryLocation {
+        if ring.ring == 1 {
+            // just use Neighbor.all as a convenient way to number these, adjust for access port = 1, and counting starting at 1 instead of 0
+            return SpiralMemoryLocation(for: SpiralNeighbor.all.index(of: neighbor)! + 2)
+        }
+        
+        // YUCK! Have to adjust for the corners, and the ones adjacent to corners. Luckily that's only 3
+        // different squares, since each corner is canonically on the side where it has the highest position
+        switch neighbor {
+        case .clockwise:
+            return SpiralMemoryLocation(ring: ring.ring, side: side, position: position - 1)
+        case .clockwiseOutward:
+            return SpiralMemoryLocation(ring: ring.nextRing, side: side, position: position)
+        case .outward:
+            return SpiralMemoryLocation(ring: ring.nextRing, side: side, position: position + 1)
+        case .counterclockwiseOutward:
+            return SpiralMemoryLocation(ring: ring.nextRing, side: side, position: position + 2)
+        case .counterclockwise where position == ring.sideLength - 1:
+            return SpiralMemoryLocation(ring: ring.nextRing, side: side.next(), position: 0)
+        case .counterclockwise:
+            return SpiralMemoryLocation(ring: ring.ring, side: side, position: position + 1)
+        case .counterclockwiseInward where position == ring.sideLength - 1:
+            return SpiralMemoryLocation(ring: ring.nextRing, side: side.next(), position: 1)
+        case .counterclockwiseInward where position == ring.sideLength - 2:
+            return SpiralMemoryLocation(ring: ring.ring, side: side.next(), position: 0)
+        case .counterclockwiseInward:
+            return SpiralMemoryLocation(ring: ring.previousRing, side: side, position: position)
+        case .inward where position == ring.sideLength - 1:
+            return SpiralMemoryLocation(ring: ring.ring, side: side.next(), position: 0)
+        case .inward:
+            return SpiralMemoryLocation(ring: ring.previousRing, side: side, position: position - 1)
+        case .clockwiseInward where position == 0:
+            return SpiralMemoryLocation(ring: ring.ring, side: side.previous(), position: ring.sideLength - 2)
+        case .clockwiseInward:
+            return SpiralMemoryLocation(ring: ring.previousRing, side: side, position: position - 2)
         }
     }
 }
-struct SpiralMemoryStore<T: Hashable> {
-    var memory: [T: SpiralMemoryLocation<T>] = [:]
-    
-    // iteratively build up indexed list of locations, use populated locations
-    // to calculate the next one, keep going until a memory location's contents exceeds `input` 
+
+extension SpiralMemoryLocation.Side: CustomStringConvertible {
+    var description: String { 
+        switch self {
+        case .right: return ".right"
+        case .top: return ".top"
+        case .left: return ".left"
+        case .bottom: return ".bottom"
+        }
+    }
 }
+extension SpiralMemoryLocation: CustomStringConvertible {
+    var description: String { return "(\(square): \(contents))" }
+}
+
+
+/*
+ 15 14 13 30
+ 04  3 12 29
+ 01  2 11 28
+ 08  9 10 27
+ 23 24 25 26
+ */
+let two = SpiralMemoryLocation<Void>(for: 2)
+let three = SpiralMemoryLocation<Void>(for: 3)
+let eleven = SpiralMemoryLocation<Void>(for: 11)
+assert([8, 1, 4, 9, 3, 10, 11, 12] == two.allNeighbors().map { $0.square })
+assert([1, 4, 15, 2, 14, 11, 12, 13] == three.allNeighbors().map { $0.square })
+assert([9, 2, 3, 10, 12, 27, 28, 29] == eleven.allNeighbors().map { $0.square })
+
+// incrementally build up indexed list of locations, use populated locations
+// to calculate the next one, keep going until a memory location's contents exceeds `input` 
+struct SpiralMemory<T> {
+    /// Memory, indexed by the square number
+    var memory: [Int: SpiralMemoryLocation<T>]
+    /// closure to generate the contents of the next square. Parameters are (self, square)
+    var contentsGenerator: (SpiralMemory<T>, Int) -> T
+    
+    init(contentsGenerator: @escaping (SpiralMemory<T>, Int) -> T) {
+        memory = [:]
+        self.contentsGenerator = contentsGenerator
+    }
+    
+    mutating func generate(until test: (SpiralMemoryLocation<T>) -> Bool) -> SpiralMemoryLocation<T> {
+        let location = (1...).first { n in 
+            let next = SpiralMemoryLocation(for: n, with: contentsGenerator(self, n))
+            memory[n] = next
+            return test(next)
+        }
+        
+        return memory[location!]!
+    }
+}
+
+var testMemory = SpiralMemory<Int>() { testMemory, n in n * 2 }
+testMemory.generate(until: { $0.square > 12 })
+print(testMemory.memory.values.sorted { $0.square < $1.square })
+
+var part2Memory = SpiralMemory<Int>() { mem, n in 
+    if n == 1 { return 1 }
+    return SpiralMemoryLocation<Void>(for: n).allNeighbors().reduce(0) { $0 + (mem.memory[$1.square]?.contents ?? 0) }
+}
+
+let part2Answer = part2Memory.generate(until: { $0.contents! > input })
+assertEqual(330785, part2Answer.contents)
 
 //: [Next](@next)
