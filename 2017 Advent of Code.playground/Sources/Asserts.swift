@@ -26,6 +26,8 @@ public func assertEqual<T>(_ expression1: @autoclosure () throws -> T?,
 public func verify<T, U>(_ testData: [(T, U)], _ closure: (T) -> U) where U: Equatable {
     for (input, expected) in testData {
         let actual = closure(input)
+        print(".", terminator: "")
         assertEqual(actual, expected)
     }
+    print()
 }
