@@ -33,7 +33,7 @@ let testData = [
 let testSpreadsheet = [(testData.map { $0.0 }, 18)]
 
 func parse(_ string: String) -> [[Int]] {
-    return string.components(separatedBy: "\n").map {
+    return string.lines().map {
         $0.components(separatedBy: .whitespaces).flatMap { Int($0) }
     }
 }
