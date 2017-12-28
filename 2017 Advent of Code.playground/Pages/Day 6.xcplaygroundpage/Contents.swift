@@ -24,8 +24,73 @@
 
  Given the initial block counts in your puzzle input, **how many redistribution cycles** must be completed before a configuration is produced that has been seen before?
  */
+
 import Foundation
 
-var str = "Hello, playground"
+let testData = [
+    ([0, 2, 7, 0], 5),
+]
+
+let input = try readResourceFile("input.txt")
+    .components(separatedBy: .whitespaces)
+    .flatMap { Int($0) }
+
+func toString(_ arr: [Int]) -> String {
+    return arr.map { String($0) }.joined(separator: " ")
+}
+
+extension Array where Element: Comparable {
+    func indexOfMax() -> Index {
+        return enumerated().max { (left, right) -> Bool in
+            if left.element == right.element {
+                // tied elements, prefer the earliest offset
+                return left.offset > right.offset
+            } else {
+                // otherwise, prefer the largest element
+                return left.element < right.element
+            }
+        }?.offset ?? startIndex
+    }
+}
+
+extension Array {
+
+    func index(wrapping index: Index) -> Index {
+        return (index % count + count) % count + startIndex
+    }
+}
+
+func solve(_ input: [Int]) -> Int {
+    guard input.count > 2 else { return 1 }
+
+    var previouslySeen = Set<String>()
+    var permutation = input
+
+    while previouslySeen.insert(toString(permutation)).inserted {
+        let redistributionIdx = permutation.indexOfMax()
+
+        let redistribution = permutation[redistributionIdx].quotientAndRemainder(dividingBy: permutation.count)
+
+        permutation[redistributionIdx] = 0
+
+        for idx in permutation.indices {
+            permutation[idx] += redistribution.quotient
+        }
+
+        let remainderStart = redistributionIdx + 1
+        let remainderEnd = redistributionIdx + 1 + redistribution.remainder
+
+        for idx in (remainderStart..<remainderEnd) {
+            let wrapped = permutation.index(wrapping: idx)
+            permutation[wrapped] += 1
+        }
+    }
+
+    return previouslySeen.count
+}
+
+verify(testData, { solve($0) })
+assertEqual(solve(input), 11137)
+
 
 //: [Next](@next)
