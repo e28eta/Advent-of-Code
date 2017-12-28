@@ -35,6 +35,42 @@
 
 import Foundation
 
-var str = "Hello, playground"
+let testData = [
+    ("""
+0
+3
+0
+1
+-3
+""".lines().flatMap({ Int($0) }), 5),
+]
+
+for (i, step) in InstructionMaze(instructions: testData[0].0).enumerated() {
+    print(i, step, separator: ": ")
+}
+
+verify(testData, { InstructionMaze(instructions: $0).count() })
+
+let input = try readResourceFile("input.txt").lines().flatMap { Int($0) }
+assertEqual(InstructionMaze(instructions: input).count(), 354121)
+
+/*:
+ # Part Two
+
+ Now, the jumps are even stranger: after each jump, if the offset was **three or more**, instead **decrease** it by `1`. Otherwise, increase it by `1` as before.
+
+ Using this rule with the above example, the process now takes `10` steps, and the offset values after finding the exit are left as `2 3 2 3 -1`.
+
+ **How many steps** does it now take to reach the exit?
+ */
+
+let testData2 = [
+    (testData[0].0, 10)
+]
+
+verify(testData2, { InstructionMaze(instructions: $0, mode: .decreaseLargePositiveJumps).count() })
+
+assertEqual(InstructionMaze(instructions: input, mode: .decreaseLargePositiveJumps).count()
+    , 27283023)
 
 //: [Next](@next)
