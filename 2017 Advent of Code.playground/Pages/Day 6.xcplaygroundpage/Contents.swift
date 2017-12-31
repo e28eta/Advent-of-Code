@@ -60,13 +60,14 @@ extension Array {
     }
 }
 
-func solve(_ input: [Int]) -> Int {
-    guard input.count > 2 else { return 1 }
+func solve(_ input: [Int]) -> (totalSteps: Int, stepsInLoop: Int) {
+    guard input.count > 2 else { return (totalSteps: 1, stepsInLoop: 1) }
 
-    var previouslySeen = Set<String>()
     var permutation = input
+    var previouslySeen = [toString(permutation): 0]
+    var stepFirstSeen: Int?
 
-    while previouslySeen.insert(toString(permutation)).inserted {
+    repeat {
         let redistributionIdx = permutation.indexOfMax()
 
         let redistribution = permutation[redistributionIdx].quotientAndRemainder(dividingBy: permutation.count)
@@ -84,13 +85,38 @@ func solve(_ input: [Int]) -> Int {
             let wrapped = permutation.index(wrapping: idx)
             permutation[wrapped] += 1
         }
-    }
 
-    return previouslySeen.count
+        stepFirstSeen = previouslySeen.updateValue(previouslySeen.count, forKey: toString(permutation))
+    } while stepFirstSeen == nil
+
+    return (totalSteps: previouslySeen.count, stepsInLoop: (previouslySeen.count - stepFirstSeen!))
 }
 
-verify(testData, { solve($0) })
-assertEqual(solve(input), 11137)
+verify(testData, { solve($0).totalSteps })
+let answer = solve(input)
+assertEqual(answer.totalSteps, 11137)
 
+/*:
+ # Part Two
+
+ Out of curiosity, the debugger would also like to know the size of the loop: starting from a state that has already been seen, how many block redistribution cycles must be performed before that same state is seen again?
+
+ In the example above, `2 4 1 2` is seen again after four cycles, and so the answer in that example would be `4`.
+
+ **How many cycles** are in the infinite loop that arises from the configuration in your puzzle input?
+ */
+
+/*
+ In other words, there are some number (X) of cycles at the beginning
+ before the loop is encountered, which then lead to an infinite cycle
+ of Y steps. Part 1 wanted Z = X + Y, Part 2 wants Y.
+ */
+
+let testData2 = [
+    ([0, 2, 7, 0], 4),
+]
+
+verify(testData2, { solve($0).stepsInLoop })
+assertEqual(answer.stepsInLoop, 1037)
 
 //: [Next](@next)
