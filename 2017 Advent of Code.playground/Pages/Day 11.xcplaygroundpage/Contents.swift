@@ -96,11 +96,21 @@ verify(testData) {
 
 let input = try readResourceFile("input.txt")
 let directions = Direction.parse(input)
-assertEqual(directions.map { $0.distance }.reduce(Distance.zero, +).stepsNecessary, 764)
+var maxDistance = 0
+
+assertEqual(directions.map { $0.distance }.reduce(Distance.zero, {
+    let newDistance = $0 + $1
+    maxDistance = max(maxDistance, newDistance.stepsNecessary)
+    return newDistance
+}).stepsNecessary, 764)
 
 
 /*:
+ # Part Two
 
+ **How many steps away** is the **furthest** he ever got from his starting position?
  */
+
+assertEqual(maxDistance, 1532)
 
 //: [Next](@next)
