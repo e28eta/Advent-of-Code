@@ -103,20 +103,33 @@ struct Instruction {
     }
 }
 
-func largestValue(_ input: String) -> Int {
+func largestValue(_ input: String) -> (atEnd: Int, ever: Int) {
     let program = input.lines().map { Instruction($0) }
     var registers = [String: Int]()
+    var largestValueEver: Int = 0
 
     for instruction in program {
         instruction.execute(&registers)
+
+        largestValueEver = max(largestValueEver, registers.values.max() ?? Int.min)
     }
 
-    return registers.values.max() ?? 0
+    return (atEnd: registers.values.max() ?? 0, ever: largestValueEver)
 }
 
-verify(testData, { largestValue($0) })
+verify(testData, { largestValue($0).atEnd })
 
 let input = try readResourceFile("input.txt")
-assertEqual(largestValue(input), 4877)
+let largest = largestValue(input)
+assertEqual(largest.atEnd, 4877)
+
+/*:
+ # Part Two
+
+ To be safe, the CPU also needs to know the highest value held in any register during this process so that it can decide how much memory to allocate to these operations. For example, in the above instructions, the highest value ever held was `10` (in register `c` after the third instruction was evaluated).
+ */
+
+assertEqual(10, largestValue(testData[0].0).ever)
+assertEqual(largest.ever, 5471)
 
 //: [Next](@next)
