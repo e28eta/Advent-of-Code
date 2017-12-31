@@ -75,31 +75,110 @@ cntj (57)
 
 let input = try readResourceFile("input.txt")
 
-struct Program {
-    let name: String
-    let children: [String]
+struct ProgramTower {
+    typealias ProgramDefinition = (name: String, weight: Int, children: [String])
 
-    init(_ definition: String) {
-        let firstSplit = definition.components(separatedBy: " -> ")
+    struct Program {
+        let name: String
+        let weight: Int
+        let children: [Program]
+
+        init(_ definition: ProgramDefinition, childLookup: [String: ProgramDefinition]) {
+            name = definition.name
+            weight = definition.weight
+            children = definition.children.map { Program(childLookup[$0]!, childLookup: childLookup) }
+        }
+
+        var totalWeight: Int {
+            return childWeights.reduce(weight, +)
+        }
+
+        var childWeights: [Int] {
+            return children.map { $0.totalWeight }
+        }
+
+        var isUnbalanced: Bool {
+            return Set(childWeights).count > 1
+        }
+
+        var childrenBalanced: Bool {
+            return !children.map { $0.isUnbalanced }.contains(true)
+        }
+
+        var unbalanced: Program? {
+            if isUnbalanced && childrenBalanced {
+                return self
+            } else if isUnbalanced {
+                return children.flatMap { $0.unbalanced }.first
+            } else {
+                return nil
+            }
+        }
+    }
+
+    let bottom: Program
+
+    init(_ input: String) {
+        let definitions = input.lines().flatMap(ProgramTower.parseProgram)
+        let programsWithParents = Set(definitions.flatMap { $0.children })
+        let bottomDefinition = definitions.first { !programsWithParents.contains($0.name) }!
+
+        let definitionLookup = Dictionary(uniqueKeysWithValues: zip(
+            definitions.map({ $0.name }),
+            definitions)
+        )
+
+        bottom = Program(bottomDefinition, childLookup: definitionLookup)
+    }
+
+    private static func parseProgram(_ line: String) -> ProgramDefinition {
+        let firstSplit = line.components(separatedBy: " -> ")
         let me = firstSplit[0].split(separator: " ")
 
-        name = String(me[0])
-        children = firstSplit.count > 1 ? firstSplit[1].components(separatedBy: ", ") : []
+        let name = String(me[0])
+        let weight = Int(
+            me[1]
+                .replacingOccurrences(of: "(", with: "")
+                .replacingOccurrences(of: ")", with: "")
+            )!
+        let children = firstSplit.count > 1 ? firstSplit[1].components(separatedBy: ", ") : []
+
+        return (name: name, weight: weight, children: children)
     }
 }
 
-func bottomProgram(_ inputString: String) -> String {
-    let programs = inputString.lines().flatMap({ Program($0) })
-    let programsWithParent = programs.reduce(Set<String>()) { set, prog in
-        var mutated = set
-        prog.children.forEach { mutated.insert($0)}
-        return mutated
-    }
+let testTower = ProgramTower(testData[0].0)
+verify(testData, { ProgramTower($0).bottom.name })
+let tower = ProgramTower(input)
+assertEqual(tower.bottom.name, "bsfpjtc")
 
-    return programs.first { !programsWithParent.contains($0.name) }!.name
-}
+/*:
+ # Part Two
 
-verify(testData, { bottomProgram($0) })
-assertEqual((bottomProgram(input), "bsfpjtc")
+ The programs explain the situation: they can't get down. Rather, they **could** get down, if they weren't expending all of their energy trying to keep the tower balanced. Apparently, one program has the **wrong weight**, and until it's fixed, they're stuck here.
+
+ For any program holding a disc, each program standing on that disc forms a sub-tower. Each of those sub-towers are supposed to be the same weight, or the disc itself isn't balanced. The weight of a tower is the sum of the weights of the programs in that tower.
+
+ In the example above, this means that for `ugml`'s disc to be balanced, `gyxo`, `ebii`, and `jptl` must all have the same weight, and they do: `61`.
+
+ However, for `tknk` to be balanced, each of the programs standing on its disc and **all programs above it** must each match. This means that the following sums must all be the same:
+
+ - `ugml` + (`gyxo` + `ebii` + `jptl`) = 68 + (61 + 61 + 61) = 251
+ - `padx` + (`pbga` + `havc` + `qoyq`) = 45 + (66 + 66 + 66) = 243
+ - `fwft` + (`ktlj` + `cntj` + `xhth`) = 72 + (57 + 57 + 57) = 243
+
+ As you can see, `tknk`'s disc is unbalanced: `ugml`'s stack is heavier than the other two. Even though the nodes above `ugml` are balanced, `ugml` itself is too heavy: it needs to be `8` units lighter for its stack to weigh `243` and keep the towers balanced. If this change were made, its weight would be `60`.
+
+ Given that exactly one program is the wrong weight, **what would its weight need to be** to balance the entire tower?
+ */
+
+let test2 = testTower.bottom.unbalanced!
+print(test2.name, test2.children.map { $0.totalWeight }, test2.children.map { $0.weight })
+
+let unbalanced = tower.bottom.unbalanced!
+print(unbalanced.name, unbalanced.children.map { $0.totalWeight }, unbalanced.children.map { $0.weight })
+
+// lahahn [1951, 1951, 1960] [1597, 85, 538]
+// answer = 529
 
 //: [Next](@next)
