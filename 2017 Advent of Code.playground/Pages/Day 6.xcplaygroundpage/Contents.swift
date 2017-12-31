@@ -53,13 +53,6 @@ extension Array where Element: Comparable {
     }
 }
 
-extension Array {
-
-    func index(wrapping index: Index) -> Index {
-        return (index % count + count) % count + startIndex
-    }
-}
-
 func solve(_ input: [Int]) -> (totalSteps: Int, stepsInLoop: Int) {
     guard input.count > 2 else { return (totalSteps: 1, stepsInLoop: 1) }
 
