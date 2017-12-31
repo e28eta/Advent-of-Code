@@ -52,13 +52,13 @@
 import Foundation
 
 let testGarbage: [(String, Int)] = [
-    ("<>", -1),
-    ("<random characters>", -1),
-    ("<<<<>", -1),
-    ("<{!>}>", -1),
-    ("<!!>", -1),
-    ("<!!!>>", -1),
-    ("<{o\"i!a,<{i<a>", -1)
+    ("<>", 0),
+    ("<random characters>", 17),
+    ("<<<<>", 3),
+    ("<{!>}>", 2),
+    ("<!!>", 0),
+    ("<!!!>>", 0),
+    ("<{o\"i!a,<{i<a>", 10)
 ]
 
 let testData: [(String, Int)] = [
@@ -74,27 +74,35 @@ let testData: [(String, Int)] = [
 
 typealias CharacterStream = IndexingIterator<String>
 
-func consumeGarbage(_ stream: inout CharacterStream) {
+func consumeGarbage(_ stream: inout CharacterStream) -> Int {
+    var length = 0
+
     while let next = stream.next(), next != ">" {
         if next == "!" {
             // consume & ignore **canceled** character
             stream.next()
+        } else {
+            length += 1
         }
     }
+
+    return length
 }
 
 struct Group {
     let children: [Group]
+    let localGarbageLength: Int
 
     init(_ stream: inout CharacterStream) {
         var children = [Group]()
+        var garbage = 0
 
         while let next = stream.next(), next != "}" {
             switch next {
             case "{":
                 children.append(Group(&stream))
             case "<":
-                consumeGarbage(&stream)
+                garbage += consumeGarbage(&stream)
             case ",":
                 continue
             default:
@@ -103,10 +111,15 @@ struct Group {
         }
 
         self.children = children
+        self.localGarbageLength = garbage
     }
 
     func score(_ value: Int) -> Int {
         return children.reduce(value) { $0 + $1.score(value + 1) }
+    }
+
+    var garbageLength: Int {
+        return children.reduce(localGarbageLength) { $0 + $1.garbageLength }
     }
 }
 
@@ -116,25 +129,50 @@ extension Group: Equatable {
     }
 }
 
-func parse(_ string: String) -> Group? {
+func parse(_ string: String) -> (Group?, Int) {
     var stream = string.makeIterator()
-    guard let next = stream.next() else { return nil }
+    guard let next = stream.next() else { return (nil, 0) }
+
+    var group: Group?
+    var garbage: Int?
+
     switch next {
     case "{":
-        return Group(&stream)
+        group = Group(&stream)
     case "<":
-        consumeGarbage(&stream)
+        garbage = consumeGarbage(&stream)
     default:
         print("Unexpected first character: \(String(describing: next))")
     }
 
-    return nil
+    return (group, garbage ?? group?.garbageLength ?? 0)
 }
 
-verify(testGarbage) { parse($0)?.score(1) ?? -1 }
-verify(testData) { parse($0)?.score(1) ?? -1 }
+verify(testData) { parse($0).0?.score(1) ?? -1 }
 
 let input = try readResourceFile("input.txt")
-assertEqual(parse(input)?.score(1), Optional(11898))
+let answer = parse(input)
+assertEqual(answer.0?.score(1), Optional(11898))
+
+/*:
+ # Part Two
+
+ Now, you're ready to remove the garbage.
+
+ To prove you've removed it, you need to count all of the characters within the garbage. The leading and trailing `<` and `>` don't count, nor do any canceled characters or the `!` doing the canceling.
+
+ - `<>`, `0` characters.
+ - `<random characters>`, `17` characters.
+ - `<<<<>`, `3` characters.
+ - `<{!>}>`, `2` characters.
+ - `<!!>`, `0` characters.
+ - `<!!!>>`, `0` characters.
+ - `<{o"i!a,<{i<a>`, `10` characters.
+
+ **How many non-canceled characters are within the garbage** in your puzzle input?
+ */
+
+verify(testGarbage) { parse($0).1 }
+assertEqual(answer.1, 5601)
 
 //: [Next](@next)
