@@ -31,17 +31,89 @@
  Starting with a frequency of zero, what is the resulting frequency after all of the changes in frequency have been applied?
  */
 
-let testData = [
-    ("+1\n+1\n+1", 3),
-    ("+1\n+1\n-2", 0),
-    ("-1\n-2\n-3", -6),
+let testData: [([String], Int?)] = [
+    (["1", "1", "1"], 3),
+    (["1", "1", "-2"], 0),
+    (["-1", "-2", "-3"], -6),
 ]
-let input = try readResourceFile("input.txt")
+let input = try readResourceFile("input.txt").replacingOccurrences(of: "+", with: "").lines()
 
-func partOne(_ input: String) -> Int {
-    return 0
+struct ParseError: Error {}
+
+func partOne(_ lines: [String]) -> Int? {
+    return try? lines.reduce(0) { 
+        guard let parsed = Int($1) else { throw ParseError() }
+        return $0 + parsed
+    }
 }
 
-verify(testData) {
-    partOne($0)
+verify(testData, partOne)
+
+assertEqual(partOne(input), 592)
+
+/**
+ # Part Two
+ 
+ You notice that the device repeats the same frequency change list over and over. To calibrate the device, you need to find the first frequency it reaches twice.
+ 
+ For example, using the same list of changes above, the device would loop as follows:
+ 
+ Current frequency  0, change of +1; resulting frequency  1.
+ Current frequency  1, change of -2; resulting frequency -1.
+ Current frequency -1, change of +3; resulting frequency  2.
+ Current frequency  2, change of +1; resulting frequency  3.
+ (At this point, the device continues from the start of the list.)
+ Current frequency  3, change of +1; resulting frequency  4.
+ Current frequency  4, change of -2; resulting frequency  2, which has already been seen.
+ In this example, the first frequency reached twice is 2. Note that your device might need to repeat its list of frequency changes many times before a duplicate frequency is found, and that duplicates might be found while in the middle of processing the list.
+ 
+ Here are other examples:
+ 
+ +1, -1 first reaches 0 twice.
+ +3, +3, +4, -2, -4 first reaches 10 twice.
+ -6, +3, +8, +5, -6 first reaches 5 twice.
+ +7, +7, -2, -7, -4 first reaches 14 twice.
+ What is the first frequency your device reaches twice?
+ */
+
+let testData2: [([String], Int?)] = [
+    (["1", "-2", "3", "1"], 2),
+    (["1", "-1"], 0),
+    (["3", "3", "4", "-2", "-4"], 10),
+    (["-6", "3", "8", "5", "-6"], 5),
+    (["7", "7", "-2", "-7", "-4"], 14),
+]
+
+func repeatingArray<T>(_ input: [T]) -> AnySequence<T> {
+    return AnySequence<T> { () -> AnyIterator<T> in
+        var nextIndex = 0
+        
+        guard !input.isEmpty else {
+            return AnyIterator<T> { nil }
+        }
+        return AnyIterator<T> {
+            defer {
+                nextIndex += 1
+            }
+            return input[nextIndex % input.count]
+        }
+    }
 }
+
+func partTwo(_ input: [String]) -> Int? {
+    var valuesSeen = Set<Int>()
+    var sum = 0
+    valuesSeen.insert(0)
+    
+    for next in repeatingArray(input) {
+        guard let parsed = Int(next) else { return nil }
+        sum += parsed
+        if valuesSeen.contains(sum) { return sum }
+        valuesSeen.insert(sum)
+    }
+    fatalError("should never leave for-in loop")
+}
+
+verify(testData2, partTwo)
+assertEqual(partTwo(input), 241)
+
