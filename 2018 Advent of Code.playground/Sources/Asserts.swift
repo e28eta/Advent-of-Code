@@ -31,7 +31,7 @@ public func verify<T, U>(_ testData: [(T, U)], _ closure: (T) -> U) -> Bool wher
     for (input, expected) in testData {
         let actual = closure(input)
         print(".", terminator: "")
-        succeeded &= assertEqual(actual, expected)
+        succeeded = succeeded && assertEqual(actual, expected)
     }
     print()
     return succeeded
