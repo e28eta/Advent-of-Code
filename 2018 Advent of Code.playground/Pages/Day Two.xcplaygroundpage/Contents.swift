@@ -24,3 +24,32 @@
  
  What is the checksum for your list of box IDs?
  */
+
+let testData = [
+    (["abcdef", "bababc", "abbcde", "abcccd", "aabcdd", "abcdee", "ababab"], 12)
+]
+let input = try readResourceFile("input.txt").lines()
+
+func frequencies(_ string: String) -> [Int: [Character]] {
+    let freqs: [Character: Int] = string.reduce(into: [:]) { (result, char) in
+        result[char] = (result[char] ?? 0) + 1
+    }
+    
+    return Dictionary(grouping: freqs.keys, by: { freqs[$0]! })
+}
+
+func checksum(_ input: [String]) -> Int {
+    var twoChars = 0, threeChars = 0
+    for line in input {
+        let freqs = frequencies(line)
+        if freqs[2] != nil { twoChars += 1 }
+        if freqs[3] != nil { threeChars += 1 }
+    }
+    return twoChars * threeChars
+}
+
+verify(testData, checksum)
+
+assertEqual(checksum(input), 5390)
+
+
