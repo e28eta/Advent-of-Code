@@ -52,4 +52,37 @@ verify(testData, checksum)
 
 assertEqual(checksum(input), 5390)
 
+/**
+ # Part Two
+ 
+ Confident that your list of box IDs is complete, you're ready to find the boxes full of prototype fabric.
+ 
+ The boxes will have IDs which differ by exactly one character at the same position in both strings. For example, given the following box IDs:
+ 
+ abcde
+ fghij
+ klmno
+ pqrst
+ fguij
+ axcye
+ wvxyz
+ The IDs abcde and axcye are close, but they differ by two characters (the second and fourth). However, the IDs fghij and fguij differ by exactly one character, the third (h and u). Those must be the correct boxes.
+ 
+ What letters are common between the two correct box IDs? (In the example above, this is found by removing the differing character from either ID, producing fgij.)
+ */
+
+func part2(_ lines: [String]) -> String {
+    let candidates = lines.combinations(takenBy: 2).filter { hammingDistance($0[0], $0[1]) == 1 }
+    assertEqual(candidates.count, 1)
+    
+    return String(zip(candidates[0][0], candidates[0][1]).filter { $0.0 == $0.1 }.map { $0.0 })
+}
+
+let testData2 = [
+    (["abcde", "fghij", "klmno", "pqrst", "fguij", "axcye", "wvxyz"], "fgij"),
+]
+
+verify(testData2, part2)
+
+assertEqual(part2(input), "nvosmkcdtdbfhyxsphzgraljq")
 
