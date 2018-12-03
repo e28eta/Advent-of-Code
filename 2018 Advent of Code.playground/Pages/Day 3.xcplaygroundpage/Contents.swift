@@ -83,17 +83,44 @@ func contendedArea(_ claims: [Claim]) -> (min: Point, max: Point) {
     return (min: contendedMin, max: contendedMax)
 }
 
-func partOne(_ claims: [Claim]) -> Int {
-    let contention = contendedArea(claims)
-    
-    var fabric = Fabric(Size(width: contention.max.x + 1, height: contention.max.y + 1))
-    fabric.add(claims: claims)
+extension Fabric {
+    init(_ claims: [Claim]) {
+        let contention = contendedArea(claims)
+        self = Fabric(Size(width: contention.max.x + 1, height: contention.max.y + 1))
+        add(claims: claims)
+    }
+}
 
-    return fabric.contendedFabric
+func partOne(_ claims: [Claim]) -> Int {
+    return Fabric(claims).contendedFabric
 }
 
 verify(testData, partOne)
 
-assertEqual(partOne(input), 116489)
+let fabric = Fabric(input)
+assertEqual(fabric.contendedFabric, 116489)
 
+/**
+ # Part Two
+ 
+ Amidst the chaos, you notice that exactly one claim doesn't overlap by even a single square inch of fabric with any other claim. If you can somehow draw attention to it, maybe the Elves will be able to make Santa's suit after all!
+ 
+ For example, in the claims above, only claim 3 is intact after all claims are made.
+ 
+ What is the ID of the only claim that doesn't overlap?
+ */
+
+let testData2 = [
+    (testData[0].0, "3")
+]
+
+func partTwo(_ claims: [Claim]) -> String {
+    return Fabric(claims).nonConflictingClaims.first!
+}
+
+verify(testData2, partTwo)
+
+let nonConflicting = fabric.nonConflictingClaims
+assertEqual(nonConflicting.count, 1)
+assertEqual(nonConflicting.first, "1260"
 
