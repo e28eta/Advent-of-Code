@@ -73,4 +73,23 @@ let testData = [
 [1518-11-05 00:45] falls asleep
 [1518-11-05 00:55] wakes up
 """, 240)]
+struct Nap {
+    let guardId: String
+    let nap: Range<Int>
+    
+    init(_ beginShift: String, _ fallAsleep: String, _ wakeUp: String) {
+        guardId = beginShift.components(separatedBy: "#")[1].components(separatedBy: " ").first!
+        nap = Int(fallAsleep.components(separatedBy: ":")[1].components(separatedBy: "]").first!)! ..< Int(wakeUp.components(separatedBy: ":")[1].components(separatedBy: "]").first!)!
+    }
+    
+    static func parse(_ string: String) -> [Nap] {
+        return sequence(state: string.lines().makeIterator()) { iter -> (String, String, String)? in 
+            guard let a = iter.next(), let b = iter.next(), let c = iter.next() else {
+                return nil
+            }
+            return (a, b, c)
+            }.map(Nap.init)
+    }
+}
 
+Nap.parse(testData[0].0)
