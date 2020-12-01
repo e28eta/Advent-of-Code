@@ -37,11 +37,9 @@ assert(input.count > 0, "there is some input")
 assert(input.first! >= 0, "Should be non-negative")
 assert(input.last! <= 2020, "Can't be more than limit")
 
-func findMatch(_ ints: [Int], value: Int = 2020) -> (Int, Int)? {
-    let sortedInput = ints.sorted()
-
-    for first in sortedInput {
-        for last in sortedInput.reversed() {
+func findMatch(_ sortedInts: [Int], value: Int = 2020) -> (Int, Int)? {
+    for first in sortedInts {
+        for last in sortedInts.reversed() {
             if (last < first) {
                 return nil
             }
@@ -68,10 +66,37 @@ verify([
     ([1721, 979, 366, 299, 675, 1456], 514579),
     (input, 32064), // solution to part 1
 ]) { (ints) -> Int in
-    guard let (first, last) = findMatch(ints) else {
+    let sortedInts = ints.sorted()
+    guard let (first, last) = findMatch(sortedInts) else {
         fatalError("Did not find any matching pairs that summed to 2020")
     }
     return first * last
+}
+
+/**
+ --- Part Two ---
+
+ The Elves in accounting are thankful for your help; one of them even offers you a starfish coin they had left over from a past vacation. They offer you a second one if you can find three numbers in your expense report that meet the same criteria.
+
+ Using the above example again, the three entries that sum to 2020 are 979, 366, and 675. Multiplying them together produces the answer, 241861950.
+
+ In your expense report, what is the product of the three entries that sum to 2020?
+ */
+
+verify([
+    ([1721, 979, 366, 299, 675, 1456], 241861950),
+    (input, 193598720), // solution to part 2
+]) { (ints) -> Int in
+    let sortedInts = ints.sorted()
+    for first in sortedInts {
+        if let (second, third) = findMatch(sortedInts, value: 2020 - first) {
+            let product = first * second * third
+            print(first, second, third, product)
+            return product
+        }
+    }
+
+    fatalError("Did not find any matching triplets that summed to 2020")
 }
 
 //: [Next](@next)
