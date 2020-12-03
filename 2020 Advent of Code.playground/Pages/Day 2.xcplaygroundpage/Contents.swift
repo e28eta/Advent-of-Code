@@ -49,6 +49,19 @@ struct PasswordDbEntry {
     func isValid() -> Bool {
         return range.contains(password.filter({ $0 == requiredCharacter }).count)
     }
+
+    func isActuallyValid() -> Bool {
+        guard
+            let firstIndex = password.index(password.startIndex, offsetBy: range.lowerBound - 1, limitedBy: password.endIndex),
+            let secondIndex = password.index(password.startIndex, offsetBy: range.upperBound - 1, limitedBy: password.endIndex) else {
+            fatalError("could not create an index?")
+        }
+
+        return
+            (password[firstIndex] == requiredCharacter)
+            != // aka XOR
+            (password[secondIndex] == requiredCharacter)
+    }
 }
 
 let input = try readResourceFile("input.txt").lines()
@@ -63,7 +76,34 @@ verify([
 }
 
 let validPasswords = parsed.filter { $0.isValid() }
-assert(validPasswords.count == 645)
+assertEqual(validPasswords.count, 645)
 
+/**
+ --- Part Two ---
+
+ While it appears you validated the passwords correctly, they don't seem to be what the Official Toboggan Corporate Authentication System is expecting.
+
+ The shopkeeper suddenly realizes that he just accidentally explained the password policy rules from his old job at the sled rental place down the street! The Official Toboggan Corporate Policy actually works a little differently.
+
+ Each policy actually describes two positions in the password, where 1 means the first character, 2 means the second character, and so on. (Be careful; Toboggan Corporate Policies have no concept of "index zero"!) Exactly one of these positions must contain the given letter. Other occurrences of the letter are irrelevant for the purposes of policy enforcement.
+
+ Given the same example list from above:
+
+ 1-3 a: abcde is valid: position 1 contains a and position 3 does not.
+ 1-3 b: cdefg is invalid: neither position 1 nor position 3 contains b.
+ 2-9 c: ccccccccc is invalid: both position 2 and position 9 contain c.
+ How many passwords are valid according to the new interpretation of the policies?
+ */
+
+verify([
+    ("1-3 a: abcde", true),
+    ("1-3 b: cdefg", false),
+    ("2-9 c: ccccccccc", false),
+]) {
+    PasswordDbEntry(line: $0)!.isActuallyValid()
+}
+
+let part2Valid = parsed.filter { $0.isActuallyValid() }
+assertEqual(part2Valid.count, 737)
 
 //: [Next](@next)
