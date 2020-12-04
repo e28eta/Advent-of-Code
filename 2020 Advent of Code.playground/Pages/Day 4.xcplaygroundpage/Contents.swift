@@ -74,6 +74,43 @@ let input = try readResourceFile("input.txt")
 struct Passport {
     enum Field: String, CaseIterable {
         case byr, iyr, eyr, hgt, hcl, ecl, pid, cid
+
+        enum EyeColor: String {
+            case amb, blu, brn, gry, grn, hzl, oth
+        }
+
+        func isValidValue(_ string: String) -> Bool {
+            switch self {
+            case .byr:
+                guard let year = Int(string) else { return false }
+                return (1920...2002).contains(year)
+            case .iyr:
+                guard let year = Int(string) else { return false }
+                return (2010...2020).contains(year)
+            case .eyr:
+                guard let year = Int(string) else { return false }
+                return (2020...2030).contains(year)
+            case .hgt:
+                guard let height = Int(string.dropLast(2)) else { return false }
+                switch string.suffix(2) {
+                case "cm":
+                    return (150...193).contains(height)
+                case "in":
+                    return (59...76).contains(height)
+                default: return false
+                }
+            case .hcl:
+                let disallowed = CharacterSet(charactersIn: "1234567890abcdef").inverted
+                return string.count == 7 && string.first == "#" && string.dropFirst().rangeOfCharacter(from: disallowed) == nil
+            case .ecl:
+                return EyeColor(rawValue: string) != nil
+            case .pid:
+                let disallowed = CharacterSet.decimalDigits.inverted
+                return string.count == 9 && string.rangeOfCharacter(from: disallowed) == nil
+            case .cid:
+                return true
+            }
+        }
     }
 
     let fields: [Field: String]
@@ -89,13 +126,20 @@ struct Passport {
             }
     }
 
-    func isValid() -> Bool {
+    func hasRequiredFields() -> Bool {
         for field in Field.allCases {
             if field != .cid && fields[field] == nil {
                 return false
             }
         }
         return true
+    }
+
+    func isValid() -> Bool {
+        return hasRequiredFields() &&
+            fields.allSatisfy({ (key, value) -> Bool in
+                key.isValidValue(value)
+            })
     }
 }
 
@@ -104,10 +148,152 @@ func parsePassports(_ string: String) -> [Passport] {
         .map(Passport.init)
 }
 
-verify([(exampleInput, 2),
-        (input, 192),
-]) { (input) in
-    return parsePassports(input).filter { $0.isValid() }.count
+let passports = parsePassports(input)
+
+verify([(parsePassports(exampleInput), 2),
+        (passports, 192),
+]) { (passports) in
+    return passports.filter { $0.hasRequiredFields() }.count
 }
+
+/**
+ --- Part Two ---
+
+ The line is moving more quickly now, but you overhear airport security talking about how passports with invalid data are getting through. Better add some data validation, quick!
+
+ You can continue to ignore the `cid` field, but each other field has strict rules about what values are valid for automatic validation:
+
+ - `byr` (Birth Year) - four digits; at least `1920` and at most `2002`.
+ - `iyr` (Issue Year) - four digits; at least `2010` and at most `2020`.
+ - `eyr` (Expiration Year) - four digits; at least `2020` and at most `2030`.
+ - `hgt` (Height) - a number followed by either `cm` or `in`:
+    - If `cm`, the number must be at least `150` and at most `193`.
+    - If `in`, the number must be at least `59` and at most `76`.
+ - `hcl` (Hair Color) - a `#` followed by exactly six characters `0`-`9` or `a`-`f`.
+ - `ecl` (Eye Color) - exactly one of: `amb` `blu` `brn` `gry` `grn` `hzl` `oth`.
+ - `pid` (Passport ID) - a nine-digit number, including leading zeroes.
+ - `cid` (Country ID) - ignored, missing or not.
+
+ Your job is to count the passports where all required fields are both **present** and **valid** according to the above rules. Here are some example values:
+
+ ```
+ byr valid:   2002
+ byr invalid: 2003
+
+ hgt valid:   60in
+ hgt valid:   190cm
+ hgt invalid: 190in
+ hgt invalid: 190
+
+ hcl valid:   #123abc
+ hcl invalid: #123abz
+ hcl invalid: 123abc
+
+ ecl valid:   brn
+ ecl invalid: wat
+
+ pid valid:   000000001
+ pid invalid: 0123456789
+ ```
+
+ Here are some invalid passports:
+
+ ```
+ eyr:1972 cid:100
+ hcl:#18171d ecl:amb hgt:170 pid:186cm iyr:2018 byr:1926
+
+ iyr:2019
+ hcl:#602927 eyr:1967 hgt:170cm
+ ecl:grn pid:012533040 byr:1946
+
+ hcl:dab227 iyr:2012
+ ecl:brn hgt:182cm pid:021572410 eyr:2020 byr:1992 cid:277
+
+ hgt:59cm ecl:zzz
+ eyr:2038 hcl:74454a iyr:2023
+ pid:3556412378 byr:2007
+ ```
+
+ Here are some valid passports:
+
+ ```
+ pid:087499704 hgt:74in ecl:grn iyr:2012 eyr:2030 byr:1980
+ hcl:#623a2f
+
+ eyr:2029 ecl:blu cid:129 byr:1989
+ iyr:2014 pid:896056539 hcl:#a97842 hgt:165cm
+
+ hcl:#888785
+ hgt:164cm byr:2001 iyr:2015 cid:88
+ pid:545766238 ecl:hzl
+ eyr:2022
+
+ iyr:2010 hgt:158cm hcl:#b6652a ecl:blu byr:1944 eyr:2021 pid:093154719
+ ```
+
+ Count the number of **valid** passports - those that have all required fields **and valid values**. Continue to treat `cid` as optional. **In your batch file, how many passports are valid**?
+ */
+
+verify([
+    ((.byr, "2002"), true),
+    ((.byr, "2003"), false),
+
+    ((.hgt, "60in"), true),
+    ((.hgt, "190cm"), true),
+    ((.hgt, "190in"), false),
+    ((.hgt, "190"), false),
+
+    ((.hcl, "#123abc"), true),
+    ((.hcl, "#123abz"), false),
+    ((.hcl, "123abc"), false),
+
+    ((.ecl, "brn"), true),
+    ((.ecl, "wat"), false),
+
+    ((.pid, "000000001"), true),
+    ((.pid, "0123456789"), false),
+]) { (f: Passport.Field, s: String) -> Bool in
+    return f.isValidValue(s)
+}
+
+
+let invalidPassports = parsePassports("""
+eyr:1972 cid:100
+hcl:#18171d ecl:amb hgt:170 pid:186cm iyr:2018 byr:1926
+
+iyr:2019
+hcl:#602927 eyr:1967 hgt:170cm
+ecl:grn pid:012533040 byr:1946
+
+hcl:dab227 iyr:2012
+ecl:brn hgt:182cm pid:021572410 eyr:2020 byr:1992 cid:277
+
+hgt:59cm ecl:zzz
+eyr:2038 hcl:74454a iyr:2023
+pid:3556412378 byr:2007
+""")
+let validPassports = parsePassports("""
+pid:087499704 hgt:74in ecl:grn iyr:2012 eyr:2030 byr:1980
+hcl:#623a2f
+
+eyr:2029 ecl:blu cid:129 byr:1989
+iyr:2014 pid:896056539 hcl:#a97842 hgt:165cm
+
+hcl:#888785
+hgt:164cm byr:2001 iyr:2015 cid:88
+pid:545766238 ecl:hzl
+eyr:2022
+
+iyr:2010 hgt:158cm hcl:#b6652a ecl:blu byr:1944 eyr:2021 pid:093154719
+""")
+
+verify([
+    (invalidPassports, 0),
+    (validPassports, 4),
+    (passports, 101),
+]) { (passports) in
+    return passports.filter { $0.isValid() }.count
+}
+
 
 //: [Next](@next)
