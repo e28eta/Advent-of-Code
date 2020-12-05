@@ -46,6 +46,24 @@ import Foundation
  As a sanity check, look through your list of boarding passes. What is the highest seat ID on a boarding pass?
  */
 
+struct Seat {
+    let pass: String
+    let seatId: Int
+
+    var row: Int { seatId >> 3 }
+    var column: Int { seatId & 0x7 }
+
+    init?(_ boardingPass: String) {
+        pass = boardingPass
+        let binary = boardingPass.replacingOccurrences(of: "F", with: "0")
+            .replacingOccurrences(of: "B", with: "1")
+            .replacingOccurrences(of: "L", with: "0")
+            .replacingOccurrences(of: "R", with: "1")
+        guard let seatId = Int(binary, radix: 2) else { return nil }
+        self.seatId = seatId
+    }
+}
+
 func seatId(_ string: String) -> Int {
     let binary = string.replacingOccurrences(of: "F", with: "0")
         .replacingOccurrences(of: "B", with: "1")
@@ -57,20 +75,20 @@ func seatId(_ string: String) -> Int {
 }
 
 verify([
-    ("FBFBBFFRLR", 357),
-    ("BFFFBBFRRR", 567),
-    ("FFFBBBFRRR", 119),
-    ("BBFFBBFRLL", 820),
-], seatId)
-
-let input = try readResourceFile("input.txt").lines()
-let seats = input.map {
-    ($0, seatId($0))
-}.sorted {
-    $0.1 < $1.1
+    ("FBFBBFFRLR", [44, 5, 357]),
+    ("BFFFBBFRRR", [70, 7, 567]),
+    ("FFFBBBFRRR", [14, 7, 119]),
+    ("BBFFBBFRLL", [102, 4, 820]),
+]) {
+    guard let seat = Seat($0) else { return [-1, -1, -1] }
+    return [seat.row, seat.column, seat.seatId]
 }
 
-assertEqual(seats.last!.1, 828)
+let input = try readResourceFile("input.txt").lines()
+let seats = input.compactMap(Seat.init).sorted { $0.seatId < $1.seatId }
+
+guard let lastSeat = seats.last else { fatalError() }
+assertEqual(lastSeat.seatId, 828)
 
 /**
  --- Part Two ---
@@ -84,11 +102,11 @@ assertEqual(seats.last!.1, 828)
  \**What is the ID of your seat?**
  */
 
-let surroundingSeats = zip(seats, seats.dropFirst()).first { (seat1, seat2) -> Bool in
-    seat1.1 + 2 == seat2.1
-}
+guard let surroundingSeats = zip(seats, seats.dropFirst()).first(where: {
+    $0.seatId + 2 == $1.seatId
+}) else { fatalError() }
 
-let mySeat = surroundingSeats!.0.1 + 1
+let mySeat = surroundingSeats.0.seatId + 1
 assertEqual(mySeat, 565)
 
 
