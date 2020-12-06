@@ -82,9 +82,9 @@ func solve(_ string: String) -> Int {
 
     return string.components(separatedBy: "\n\n")
         .reduce(0) { sum, group in
-            return sum + group.filter { c in
-                answers.contains(c.unicodeScalars.first!)
-            }.reduce(into: Set<Character>()) { (set, c) in
+            return sum + group.unicodeScalars.filter { c in
+                answers.contains(c)
+            }.reduce(into: Set<UnicodeScalar>()) { (set, c) in
                 set.insert(c)
             }.count
         }
@@ -142,17 +142,17 @@ func part2(_ string: String) -> Int {
     return string.components(separatedBy: "\n\n")
         .reduce(0) { sum, group in
             let people = group.split(separator: "\n")
-            guard people.count > 0 else { return sum }
+            guard let firstPerson = people.first else { return sum }
 
             // all answers first person said yes to
-            var yeses = people.first!
-                .filter({ answers.contains($0.unicodeScalars.first! )})
-                .reduce(into: Set<Character>()) { $0.insert($1) }
+            var yeses = firstPerson.unicodeScalars
+                .filter({ answers.contains($0) })
+                .reduce(into: Set<UnicodeScalar>()) { $0.insert($1) }
 
             // go through the rest of the people
             for person in people.dropFirst() {
                 // go through all yeses remaining
-                for yes in yeses where !person.contains(yes) {
+                for yes in yeses where !person.unicodeScalars.contains(yes) {
                     // remove if this person didn't say yes
                     yeses.remove(yes)
                 }
