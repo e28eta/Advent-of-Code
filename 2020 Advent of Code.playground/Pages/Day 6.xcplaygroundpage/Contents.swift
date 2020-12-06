@@ -52,6 +52,29 @@ import Foundation
  For each group, count the number of questions to which anyone answered "yes". **What is the sum of those counts?**
  */
 
+let example1 = """
+abcx
+abcy
+abcz
+"""
+let example2 = """
+abc
+
+a
+b
+c
+
+ab
+ac
+
+a
+a
+a
+a
+
+b
+"""
+
 let input = try readResourceFile("input.txt")
 
 func solve(_ string: String) -> Int {
@@ -68,29 +91,81 @@ func solve(_ string: String) -> Int {
 }
 
 verify([
-    ("""
-abcx
-abcy
-abcz
-""", 6),
-    ("""
-abc
-
-a
-b
-c
-
-ab
-ac
-
-a
-a
-a
-a
-
-b
-""", 11),
+    (example1, 6),
+    (example2, 11),
     (input, 6249),
 ], solve)
+
+/**
+ --- Part Two ---
+
+ As you finish the last group's customs declaration, you notice that you misread one word in the instructions:
+
+ You don't need to identify the questions to which **anyone** answered "yes"; you need to identify the questions to which **everyone** answered "yes"!
+
+ Using the same example as above:
+
+ ```
+ abc
+
+ a
+ b
+ c
+
+ ab
+ ac
+
+ a
+ a
+ a
+ a
+
+ b
+ ```
+
+ This list represents answers from five groups:
+
+ - In the first group, everyone (all 1 person) answered "yes" to `3` questions: `a`, `b`, and `c`.
+ - In the second group, there is **no** question to which everyone answered "yes".
+ - In the third group, everyone answered yes to only `1` question, `a`. Since some people did not answer "yes" to `b` or `c`, they don't count.
+ - In the fourth group, everyone answered yes to only `1` question, `a`.
+ - In the fifth group, everyone (all 1 person) answered "yes" to `1` question, `b`.
+
+ In this example, the sum of these counts is `3 + 0 + 1 + 1 + 1 = 6`.
+
+ For each group, count the number of questions to which everyone answered "yes". **What is the sum of those counts?**
+ */
+
+func part2(_ string: String) -> Int {
+    let answers = CharacterSet.lowercaseLetters
+
+    return string.components(separatedBy: "\n\n")
+        .reduce(0) { sum, group in
+            let people = group.split(separator: "\n")
+            guard people.count > 0 else { return sum }
+
+            // all answers first person said yes to
+            var yeses = people.first!
+                .filter({ answers.contains($0.unicodeScalars.first! )})
+                .reduce(into: Set<Character>()) { $0.insert($1) }
+
+            // go through the rest of the people
+            for person in people.dropFirst() {
+                // go through all yeses remaining
+                for yes in yeses where !person.contains(yes) {
+                    // remove if this person didn't say yes
+                    yeses.remove(yes)
+                }
+            }
+
+            return sum + yeses.count
+        }
+}
+
+verify([
+    (example1, 3),
+    (example2, 6),
+    (input, 3103),
+], part2)
 
 //: [Next](@next)
