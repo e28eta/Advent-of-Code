@@ -52,12 +52,31 @@ import Foundation
  For each group, count the number of questions to which anyone answered "yes". **What is the sum of those counts?**
  */
 
-let example1 = """
+struct DeclarationForm {
+    let yeses: Set<UnicodeScalar>
+
+    init?(_ s: String) {
+        let characterSet = CharacterSet.lowercaseLetters
+        guard s.rangeOfCharacter(from: characterSet) != nil else { return nil }
+
+        yeses = s.unicodeScalars
+            .filter(characterSet.contains)
+            .reduce(into: Set()) { $0.insert($1) }
+    }
+}
+
+func parse(_ string: String) -> [[DeclarationForm]] {
+    return string.components(separatedBy: "\n\n").map {
+        $0.lines().compactMap(DeclarationForm.init)
+    }
+}
+
+let example1 = parse("""
 abcx
 abcy
 abcz
-"""
-let example2 = """
+""")
+let example2 = parse("""
 abc
 
 a
@@ -73,21 +92,16 @@ a
 a
 
 b
-"""
+""")
 
-let input = try readResourceFile("input.txt")
+let input = try parse(readResourceFile("input.txt"))
 
-func solve(_ string: String) -> Int {
-    let answers = CharacterSet.lowercaseLetters
-
-    return string.components(separatedBy: "\n\n")
-        .reduce(0) { sum, group in
-            return sum + group.unicodeScalars.filter { c in
-                answers.contains(c)
-            }.reduce(into: Set<UnicodeScalar>()) { (set, c) in
-                set.insert(c)
-            }.count
-        }
+func solve(_ groups: [[DeclarationForm]]) -> Int {
+    return groups.reduce(0) { sum, group in
+        sum + group.reduce(into: Set()) { (yesUnion, form) in
+            yesUnion.formUnion(form.yeses)
+        }.count
+    }
 }
 
 verify([
@@ -136,30 +150,12 @@ verify([
  For each group, count the number of questions to which everyone answered "yes". **What is the sum of those counts?**
  */
 
-func part2(_ string: String) -> Int {
-    let answers = CharacterSet.lowercaseLetters
-
-    return string.components(separatedBy: "\n\n")
-        .reduce(0) { sum, group in
-            let people = group.split(separator: "\n")
-            guard let firstPerson = people.first else { return sum }
-
-            // all answers first person said yes to
-            var yeses = firstPerson.unicodeScalars
-                .filter({ answers.contains($0) })
-                .reduce(into: Set<UnicodeScalar>()) { $0.insert($1) }
-
-            // go through the rest of the people
-            for person in people.dropFirst() {
-                // go through all yeses remaining
-                for yes in yeses where !person.unicodeScalars.contains(yes) {
-                    // remove if this person didn't say yes
-                    yeses.remove(yes)
-                }
-            }
-
-            return sum + yeses.count
-        }
+func part2(_ groups: [[DeclarationForm]]) -> Int {
+    return groups.reduce(0) { sum, group in
+        sum + group.reduce(into: group.first?.yeses ?? Set()) { (yesIntersection, form) in
+            yesIntersection.formIntersection(form.yeses)
+        }.count
+    }
 }
 
 verify([
