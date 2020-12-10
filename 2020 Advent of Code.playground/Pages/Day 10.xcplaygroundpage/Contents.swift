@@ -156,5 +156,114 @@ verify([
     return one * three
 }
 
+/**
+ --- Part Two ---
+
+ To completely determine whether you have enough adapters, you'll need to figure out how many different ways they can be arranged. Every arrangement needs to connect the charging outlet to your device. The previous rules about when adapters can successfully connect still apply.
+
+ The first example above (the one that starts with 16, 10, 15) supports the following arrangements:
+
+ (0), 1, 4, 5, 6, 7, 10, 11, 12, 15, 16, 19, (22)
+ (0), 1, 4, 5, 6, 7, 10, 12, 15, 16, 19, (22)
+ (0), 1, 4, 5, 7, 10, 11, 12, 15, 16, 19, (22)
+ (0), 1, 4, 5, 7, 10, 12, 15, 16, 19, (22)
+ (0), 1, 4, 6, 7, 10, 11, 12, 15, 16, 19, (22)
+ (0), 1, 4, 6, 7, 10, 12, 15, 16, 19, (22)
+ (0), 1, 4, 7, 10, 11, 12, 15, 16, 19, (22)
+ (0), 1, 4, 7, 10, 12, 15, 16, 19, (22)
+ (The charging outlet and your device's built-in adapter are shown in parentheses.) Given the adapters from the first example, the total number of arrangements that connect the charging outlet to your device is 8.
+
+ The second example above (the one that starts with 28, 33, 18) has many arrangements. Here are a few:
+
+ (0), 1, 2, 3, 4, 7, 8, 9, 10, 11, 14, 17, 18, 19, 20, 23, 24, 25, 28, 31,
+ 32, 33, 34, 35, 38, 39, 42, 45, 46, 47, 48, 49, (52)
+
+ (0), 1, 2, 3, 4, 7, 8, 9, 10, 11, 14, 17, 18, 19, 20, 23, 24, 25, 28, 31,
+ 32, 33, 34, 35, 38, 39, 42, 45, 46, 47, 49, (52)
+
+ (0), 1, 2, 3, 4, 7, 8, 9, 10, 11, 14, 17, 18, 19, 20, 23, 24, 25, 28, 31,
+ 32, 33, 34, 35, 38, 39, 42, 45, 46, 48, 49, (52)
+
+ (0), 1, 2, 3, 4, 7, 8, 9, 10, 11, 14, 17, 18, 19, 20, 23, 24, 25, 28, 31,
+ 32, 33, 34, 35, 38, 39, 42, 45, 46, 49, (52)
+
+ (0), 1, 2, 3, 4, 7, 8, 9, 10, 11, 14, 17, 18, 19, 20, 23, 24, 25, 28, 31,
+ 32, 33, 34, 35, 38, 39, 42, 45, 47, 48, 49, (52)
+
+ (0), 3, 4, 7, 10, 11, 14, 17, 20, 23, 25, 28, 31, 34, 35, 38, 39, 42, 45,
+ 46, 48, 49, (52)
+
+ (0), 3, 4, 7, 10, 11, 14, 17, 20, 23, 25, 28, 31, 34, 35, 38, 39, 42, 45,
+ 46, 49, (52)
+
+ (0), 3, 4, 7, 10, 11, 14, 17, 20, 23, 25, 28, 31, 34, 35, 38, 39, 42, 45,
+ 47, 48, 49, (52)
+
+ (0), 3, 4, 7, 10, 11, 14, 17, 20, 23, 25, 28, 31, 34, 35, 38, 39, 42, 45,
+ 47, 49, (52)
+
+ (0), 3, 4, 7, 10, 11, 14, 17, 20, 23, 25, 28, 31, 34, 35, 38, 39, 42, 45,
+ 48, 49, (52)
+ In total, this set of adapters can connect the charging outlet to your device in 19208 distinct arrangements.
+
+ You glance back down at your bag and try to remember why you brought so many adapters; there must be more than a trillion valid ways to arrange them! Surely, there must be an efficient way to count the arrangements.
+
+ What is the total number of distinct ways you can arrange the adapters to connect the charging outlet to your device?
+ */
+
+/*
+ Shortcut! According to my adapter distributions, they're all either 1 or 3 apart.
+ Figure out how many adapters in a row are 1 apart, and that gives the number of combos.
+ First & last must be included, because the sequence before and sequence after are 3 away.
+
+ 3 in a row: 2x; 0, 1
+ 4 in a row: 4x; 00, 01, 10, 11
+ 5 in a row: 7x; not 000
+
+ Tried to work out a pattern. And then took another shortcut, and discovered my input
+ never has >5 in a row 🤦‍♂️
+ 6 in a row: 13; can't have 0000, 0001, 1000, but any other combo
+ 7 in a row: can't have 00000, 00001, 10000, 00011, 00010, 10001, 11000, 01000. 32 - (1 + 2 + 5) = 24
+ 8 in a row: can't have 000000, 000001, 100000, 000011, 000010, 100001, 110000, 010000, 000100, 000101, 000110, 000111, 100010, 100011, 110001, 010001, 111000, 011000, 101000, 001000
+ 64 - (1 + 2 + 5 + 12) = 44
+ */
+
+func distinctWays(_ sorted: [Int]) -> Int {
+    let joltages = [0] + sorted + [sorted.last! + 3]
+
+    return zip(joltages, joltages.dropFirst()).reduce(into: [[]]) { (arrs, nums) in
+        arrs[arrs.endIndex - 1].append(nums.0)
+        let difference = nums.1 - nums.0
+        switch difference {
+        case 1:
+            break
+        case 3:
+            arrs.append([])
+        default:
+            fatalError("unhandled difference amount \(difference)")
+        }
+    }
+    .map(\.count)
+    .reduce(1) { product, consecutiveSeqLength in
+        switch consecutiveSeqLength {
+        case 0...2:
+            return product
+        case 3:
+            return product * 2
+        case 4:
+            return product * 4
+        case 5:
+            return product * 7
+        default:
+            fatalError("unhandled sequence length \(consecutiveSeqLength)")
+        }
+    }
+}
+
+verify([
+    (example1, 8),
+    (example2, 19208),
+    (input, 169255295254528)
+], distinctWays)
 
 //: [Next](@next)
