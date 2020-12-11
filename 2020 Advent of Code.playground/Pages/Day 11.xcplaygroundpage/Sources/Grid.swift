@@ -1,5 +1,61 @@
 import Foundation
 
+public struct GridIndex: Strideable, CustomDebugStringConvertible {
+    public let width: Int
+    public let row: Int
+    public let col: Int
+    let index: Int
+
+    init?(width: Int, row: Int, col: Int) {
+        guard row >= 0, col >= 0, col < width else { return nil }
+        self.width = width
+        self.row = row
+        self.col = col
+        self.index = width * row + col
+    }
+
+    init(width: Int, index: Int) {
+        self.width = width
+        self.index = index
+        self.row = index / width
+        self.col = index % width
+    }
+
+    public func advanced(by n: Int) -> Self {
+        return GridIndex(width: width,
+                         index: index + n)
+    }
+
+    public func advanced(by rc: (Int, Int), limitedTo endIndex: (GridIndex)) -> Self? {
+        guard let result = GridIndex(width: width,
+                               row: row + rc.0,
+                               col: col + rc.1),
+              result.distance(to: endIndex) > 0 else { return nil }
+        return result
+
+    }
+
+    public func distance(to other: Self) -> Int {
+        // broken if they have different widths. nbd for me
+        return other.index - index
+    }
+
+    public static let eightWayDirections = [
+        (-1, -1),
+        (-1, 0),
+        (-1, 1),
+        (0, -1),
+        (0, 1),
+        (1, -1),
+        (1, 0),
+        (1, 1)
+    ]
+
+    public var debugDescription: String {
+        return "(\(row), \(col))"
+    }
+}
+
 public struct Grid<E>: RandomAccessCollection, MutableCollection {
     public typealias Element = E
     public typealias Index = GridIndex
@@ -7,59 +63,36 @@ public struct Grid<E>: RandomAccessCollection, MutableCollection {
     var contents: [[E]]
     let width: Int
     let height: Int
+    let neighbors: [[Index]]
 
-    public struct GridIndex: Strideable {
-        let width: Int
-        let row: Int
-        let col: Int
-        let index: Int
-
-        init?(width: Int, row: Int, col: Int) {
-            guard row >= 0, col >= 0, col < width else { return nil }
-            self.width = width
-            self.row = row
-            self.col = col
-            index = width * row + col
-        }
-
-        init(width: Int, index: Int) {
-            self.width = width
-            self.index = index
-            row = index / width
-            col = index % width
-        }
-
-        public func advanced(by n: Int) -> Grid<E>.GridIndex {
-            return GridIndex(width: width,
-                             index: index + n)
-        }
-
-        public func distance(to other: Grid<E>.GridIndex) -> Int {
-            // broken if they have different widths. nbd for me
-            return other.index - index
-        }
-    }
-
-    public var startIndex: GridIndex {
-        GridIndex(width: width, index: 0)
-    }
-    public var endIndex: GridIndex {
-        GridIndex(width: width, row: height, col: 0)!
-    }
+    public let startIndex: Index
+    public let endIndex: Index
 
     public init(_ contents: [[E]])  {
         guard contents.count > 0,
-              let firstRow = contents.first,
-              firstRow.count > 0 else {
+              let width = contents.first?.count,
+              width > 0 else {
             fatalError("Must be non-empty grid")
         }
-        guard contents.allSatisfy({ $0.count == firstRow.count }) else {
+        guard contents.allSatisfy({ $0.count == width }) else {
             fatalError("Every row must be same size")
         }
 
         self.height = contents.count
-        self.width = firstRow.count
+        self.width = width
         self.contents = contents
+
+        let startIndex = GridIndex(width: width, index: 0)
+        let endIndex = GridIndex(width: width, index: height * width)
+        self.startIndex = startIndex
+        self.endIndex = endIndex
+
+        neighbors = (startIndex..<endIndex).map { position in
+            GridIndex.eightWayDirections
+                .compactMap {
+                    position.advanced(by: $0, limitedTo: endIndex)
+                }
+        }
     }
 
     public subscript(position: Index) -> E {
@@ -71,36 +104,21 @@ public struct Grid<E>: RandomAccessCollection, MutableCollection {
         }
     }
 
-    public func neighbors(position: Index) -> [Index] {
-        return [
-            GridIndex(width: width, row: position.row - 1, col: position.col - 1),
-            GridIndex(width: width, row: position.row - 1, col: position.col),
-            GridIndex(width: width, row: position.row - 1, col: position.col + 1),
-            GridIndex(width: width, row: position.row, col: position.col - 1),
-            GridIndex(width: width, row: position.row, col: position.col + 1),
-            GridIndex(width: width, row: position.row + 1, col: position.col - 1),
-            GridIndex(width: width, row: position.row + 1, col: position.col),
-            GridIndex(width: width, row: position.row + 1, col: position.col + 1),
-        ]
-        .compactMap({ $0 }) // eliminate indices off the grid above, left or right
-        .filter({ $0.row < height }) // eliminate indices off the grid below
-    }
-
-    public func neighborCount(position: Index, isIncluded predicate: (GridIndex) -> Bool) -> Int {
-        return neighbors(position: position).filter(predicate).count
+    public func neighborCount(position: Index, isIncluded predicate: (Index) -> Bool) -> Int {
+        return neighbors[position.index].filter(predicate).count
     }
 }
 
 extension Grid: CustomStringConvertible where Grid.Element: CustomStringConvertible {
     public var description: String {
-        return contents.map { r in
-            r.map(\.description).joined()
+        return contents.map { row in
+            row.map(\.description).joined()
         }.joined(separator: "\n")
     }
 }
 
 extension Grid where Grid.Element: Equatable {
     public func neighborCount(position: Index, expected: Element) -> Int {
-        return neighbors(position: position).filter { self[$0] == expected}.count
+        return neighbors[position.index].filter { self[$0] == expected }.count
     }
 }

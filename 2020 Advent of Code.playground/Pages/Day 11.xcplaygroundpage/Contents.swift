@@ -35,6 +35,7 @@ import Foundation
  After one round of these rules, every seat in the example layout becomes occupied:
 
  ```
+
  #.##.##.##
  #######.##
  #.#.#..#..
@@ -50,6 +51,7 @@ import Foundation
  After a second round, the seats with four or more occupied adjacent seats become empty again:
 
  ```
+
  #.LL.L#.##
  #LLLLLL.L#
  L.L.L..L..
@@ -65,6 +67,7 @@ import Foundation
  This process continues for three more rounds:
 
  ```
+
  #.##.L#.##
  #L###LL.L#
  L.#.#..#..
@@ -78,6 +81,7 @@ import Foundation
  ```
 
  ```
+
  #.#L.L#.##
  #LLL#LL.L#
  L.L.L..#..
@@ -91,6 +95,7 @@ import Foundation
  ```
 
  ```
+
  #.#L.L#.##
  #LLL#LL.L#
  L.#.L..#..
@@ -120,9 +125,61 @@ enum Location: CustomStringConvertible {
     }
 }
 
+struct Seat: CustomStringConvertible {
+    var status: Location
+    let visibleSeats: [GridIndex]
+
+    init(status: Location, visibleSeats: [GridIndex]) {
+        self.status = status
+        self.visibleSeats = visibleSeats
+    }
+
+    var description: String { status.description }
+}
+
+extension Grid where Element == Seat {
+    init(locationGrid: Grid<Location>) {
+        let seats: [[Seat]] = locationGrid.indices
+            .reduce(into: [[GridIndex]]()) { splits, position in
+                if (position.col == 0) {
+                    splits.append([])
+                }
+                splits[splits.endIndex - 1].append(position)
+            }
+            .map { row in
+                row.map { position -> Seat in
+                    guard locationGrid[position] != .floor else {
+                        // don't care about seats visible from floor spaces
+                        return Seat(status: .floor, visibleSeats: [])
+                    }
+
+                    let visibleSeats = GridIndex.eightWayDirections
+                        .compactMap { delta -> (GridIndex?) in
+                            var neighbor: GridIndex? = position
+
+                            repeat {
+                                neighbor = neighbor!.advanced(by: delta, limitedTo: locationGrid.endIndex)
+                            } while (neighbor != nil && // ran off above, below, left or right
+                                        locationGrid[neighbor!] == .floor) // not a seat yet
+                            return neighbor
+                        }
+
+                    return Seat(status: locationGrid[position], visibleSeats: visibleSeats)
+                }
+            }
+
+        self.init(seats)
+    }
+}
+
+
 struct WaitingArea: CustomStringConvertible {
-    var grid: Grid<Location>
-    let seats: [Grid<Location>.Index]
+    // grid of Location, for part 1
+    var locationGrid: Grid<Location>
+    // grid of Seat: Location + the grid indices it can see
+    var seatGrid: Grid<Seat>
+    // list of grid indices that contain seats, calculated once
+    let seats: [GridIndex]
 
     init(_ input: String) {
         let elements: [[Location]] = input.lines().map { line in
@@ -139,23 +196,43 @@ struct WaitingArea: CustomStringConvertible {
         }
 
         let grid = Grid(elements)
-        self.grid = grid
+        self.locationGrid = grid
+        self.seatGrid = Grid<Seat>(locationGrid: grid)
         self.seats = grid.indices.filter { grid[$0] != .floor }
     }
 
     mutating func performRound() -> Bool {
         let previousState = seats.map { idx in
-            (idx, grid.neighborCount(position: idx, expected: .occupiedSeat))
+            (idx, locationGrid.neighborCount(position: idx, expected: .occupiedSeat))
         }
 
         var mutated = false
         for (idx, occupiedCount) in previousState {
-            if grid[idx] == .emptySeat && occupiedCount == 0 {
+            if locationGrid[idx] == .emptySeat && occupiedCount == 0 {
                 mutated = true
-                grid[idx] = .occupiedSeat
-            } else if grid[idx] == .occupiedSeat && occupiedCount >= 4 {
+                locationGrid[idx] = .occupiedSeat
+            } else if locationGrid[idx] == .occupiedSeat && occupiedCount >= 4 {
                 mutated = true
-                grid[idx] = .emptySeat
+                locationGrid[idx] = .emptySeat
+            }
+        }
+
+        return mutated
+    }
+
+    mutating func performPartTwoRound() -> Bool {
+        let previousState = seats.map { position in
+            (position, seatGrid[position].visibleSeats.filter({ seatGrid[$0].status == .occupiedSeat}).count)
+        }
+
+        var mutated = false
+        for (position, count) in previousState {
+            if seatGrid[position].status == .emptySeat && count == 0 {
+                mutated = true
+                seatGrid[position].status = .occupiedSeat
+            } else if seatGrid[position].status == .occupiedSeat && count >= 5 {
+                mutated = true
+                seatGrid[position].status = .emptySeat
             }
         }
 
@@ -166,12 +243,20 @@ struct WaitingArea: CustomStringConvertible {
         while (performRound()) { }
     }
 
+    mutating func performAllPartTwoRounds() {
+        while (performPartTwoRound()) { }
+    }
+
     func occupiedSeats() -> Int {
-        return grid.filter { $0 == .occupiedSeat }.count
+        return locationGrid.filter { $0 == .occupiedSeat }.count
+    }
+
+    func occupiedPartTwoSeats() -> Int {
+        return seatGrid.filter { $0.status == .occupiedSeat }.count
     }
 
     var description: String {
-        return grid.description
+        return locationGrid.description
     }
 }
 
@@ -191,11 +276,161 @@ let input = try readResourceFile("input.txt")
 
 verify([
     (exampleInput, 37),
-    (input, 2453)
+//    (input, 2453)
 ]) { string in
     var area = WaitingArea(string)
     area.performAllRounds()
     return area.occupiedSeats()
 }
 
+/**
+ --- Part Two ---
+
+ As soon as people start to arrive, you realize your mistake. People don't just care about adjacent seats - they care about the **first seat they can see** in each of those eight directions!
+
+ Now, instead of considering just the eight immediately adjacent seats, consider the **first seat** in each of those eight directions. For example, the empty seat below would see **eight** occupied seats:
+
+ ```
+ .......#.
+ ...#.....
+ .#.......
+ .........
+ ..#L....#
+ ....#....
+ .........
+ #........
+ ...#.....
+ ```
+
+ The leftmost empty seat below would only see **one** empty seat, but cannot see any of the occupied ones:
+
+ ```
+ .............
+ .L.L.#.#.#.#.
+ .............
+ ```
+
+ The empty seat below would see no occupied seats:
+
+ ```
+ .##.##.
+ #.#.#.#
+ ##...##
+ ...L...
+ ##...##
+ #.#.#.#
+ .##.##.
+ ```
+
+ Also, people seem to be more tolerant than you expected: it now takes **five or more** visible occupied seats for an occupied seat to become empty (rather than **four or more** from the previous rules). The other rules still apply: empty seats that see no occupied seats become occupied, seats matching no rule don't change, and floor never changes.
+
+ Given the same starting layout as above, these new rules cause the seating area to shift around as follows:
+
+ ```
+ L.LL.LL.LL
+ LLLLLLL.LL
+ L.L.L..L..
+ LLLL.LL.LL
+ L.LL.LL.LL
+ L.LLLLL.LL
+ ..L.L.....
+ LLLLLLLLLL
+ L.LLLLLL.L
+ L.LLLLL.LL
+ ```
+
+ ```
+
+ #.##.##.##
+ #######.##
+ #.#.#..#..
+ ####.##.##
+ #.##.##.##
+ #.#####.##
+ ..#.#.....
+ ##########
+ #.######.#
+ #.#####.##
+ ```
+
+ ```
+
+ #.LL.LL.L#
+ #LLLLLL.LL
+ L.L.L..L..
+ LLLL.LL.LL
+ L.LL.LL.LL
+ L.LLLLL.LL
+ ..L.L.....
+ LLLLLLLLL#
+ #.LLLLLL.L
+ #.LLLLL.L#
+ ```
+
+ ```
+
+ #.L#.##.L#
+ #L#####.LL
+ L.#.#..#..
+ ##L#.##.##
+ #.##.#L.##
+ #.#####.#L
+ ..#.#.....
+ LLL####LL#
+ #.L#####.L
+ #.L####.L#
+ ```
+ ```
+
+ #.L#.L#.L#
+ #LLLLLL.LL
+ L.L.L..#..
+ ##LL.LL.L#
+ L.LL.LL.L#
+ #.LLLLL.LL
+ ..L.L.....
+ LLLLLLLLL#
+ #.LLLLL#.L
+ #.L#LL#.L#
+ ```
+ ```
+
+ #.L#.L#.L#
+ #LLLLLL.LL
+ L.L.L..#..
+ ##L#.#L.L#
+ L.L#.#L.L#
+ #.L####.LL
+ ..#.#.....
+ LLL###LLL#
+ #.LLLLL#.L
+ #.L#LL#.L#
+ ```
+ ```
+
+ #.L#.L#.L#
+ #LLLLLL.LL
+ L.L.L..#..
+ ##L#.#L.L#
+ L.L#.LL.L#
+ #.LLLL#.LL
+ ..#.L.....
+ LLL###LLL#
+ #.LLLLL#.L
+ #.L#LL#.L#
+ ```
+
+ Again, at this point, people stop shifting around and the seating area reaches equilibrium. Once this occurs, you count `26` occupied seats.
+
+ Given the new visibility method and the rule change for occupied seats becoming empty, once equilibrium is reached, how many seats end up occupied?
+ */
+
+verify([
+    (exampleInput, 26),
+//    (input, 2159),
+]) { string in
+    var area = WaitingArea(string)
+    area.performAllPartTwoRounds()
+    return area.occupiedPartTwoSeats()
+}
 //: [Next](@next)
