@@ -47,7 +47,7 @@ import Foundation
 enum Direction: Character {
     case north = "N", east = "E", south = "S", west = "W"
 
-    mutating func turn(direction: Turn) {
+    mutating func turn(direction: TurnDirection) {
         switch (self, direction) {
         case (.north, .right), (.south, .left): self = .east
         case (.north, .left), (.south, .right): self = .west
@@ -66,8 +66,19 @@ enum Direction: Character {
     }
 }
 
-enum Turn: Character {
+enum TurnDirection: Character {
     case right = "R", left = "L"
+
+    func turn(waypoint: Coordinate) -> Coordinate {
+        switch self {
+        case .right:
+            return Coordinate(x: waypoint.y * -1,
+                              y: waypoint.x)
+        case .left:
+            return Coordinate(x: waypoint.y,
+                              y: waypoint.x * -1)
+        }
+    }
 }
 
 extension Coordinate {
@@ -82,11 +93,15 @@ extension Coordinate {
                                   y: lhs.y + delta.y * rhs.1)
         lhs = newValue
     }
+
+    static func *(_ lhs: Coordinate, _ rhs: Int) -> (Int, Int) {
+        return (lhs.x * rhs, lhs.y * rhs)
+    }
 }
 
 enum Action {
     case absoluteMovement(Direction, distance: Int)
-    case turn(Turn, times: Int)
+    case turn(TurnDirection, times: Int)
     case moveForward(distance: Int)
 
     init?(_ string: String) {
@@ -97,8 +112,8 @@ enum Action {
 
         if let direction = Direction(rawValue: command) {
             self = .absoluteMovement(direction, distance: value)
-        } else if let turn = Turn(rawValue: command), value % 90 == 0 {
-            self = .turn(turn, times: value / 90)
+        } else if let direction = TurnDirection(rawValue: command), value % 90 == 0 {
+            self = .turn(direction, times: value / 90)
         } else if command == "F" {
             self = .moveForward(distance: value)
         } else {
@@ -110,6 +125,7 @@ enum Action {
 struct Position {
     var currentDirection = Direction.east
     var coordinate = Coordinate()
+    var waypoint = Coordinate(x: 10, y: -1)
 
     func taking(actions: [Action]) -> Position {
         var position = self
@@ -125,9 +141,22 @@ struct Position {
             coordinate += (direction, distance)
         case let .moveForward(distance: distance):
             coordinate += (currentDirection, distance)
-        case let .turn(turn, times: times):
+        case let .turn(direction, times: times):
             for _ in (0..<times) {
-                currentDirection.turn(direction: turn)
+                currentDirection.turn(direction: direction)
+            }
+        }
+    }
+
+    mutating func take(partTwo action: Action) {
+        switch action {
+        case let .absoluteMovement(direction, distance: distance):
+            waypoint += (direction, distance)
+        case let .moveForward(distance: distance):
+            coordinate = coordinate + (waypoint * distance)
+        case let .turn(direction, times: times):
+            for _ in (0..<times) {
+                waypoint = direction.turn(waypoint: waypoint)
             }
         }
     }
@@ -151,5 +180,43 @@ verify([
     Position().taking(actions: actions).coordinate.distance(to: .origin)
 }
 
+/**
+ --- Part Two ---
+
+ Before you can give the destination to the captain, you realize that the actual action meanings were printed on the back of the instructions the whole time.
+
+ Almost all of the actions indicate how to move a waypoint which is relative to the ship's position:
+
+ - Action `N` means to move the waypoint **north** by the given value.
+ - Action `S` means to move the waypoint **south** by the given value.
+ - Action `E` means to move the waypoint **east** by the given value.
+ - Action `W` means to move the waypoint **west** by the given value.
+ - Action `L` means to rotate the waypoint around the ship **left (counter-clockwise)** the given number of degrees.
+ - Action `R` means to rotate the waypoint around the ship **right (clockwise)** the given number of degrees.
+ - Action `F` means to move **forward** to the waypoint a number of times equal to the given value.
+
+ The waypoint starts **10 units east and 1 unit north** relative to the ship. The waypoint is relative to the ship; that is, if the ship moves, the waypoint moves with it.
+
+ For example, using the same instructions as above:
+
+ - `F10` moves the ship to the waypoint 10 times (a total of **100 units east and 10 units north**), leaving the ship at **east 100, north 10.** The waypoint stays 10 units east and 1 unit north of the ship.
+ - `N3` moves the waypoint 3 units north to **10 units east and 4 units north of the ship.** The ship remains at **east 100, north 10.**
+ - `F7` moves the ship to the waypoint 7 times (a total of **70 units east and 28 units north**), leaving the ship at east **170, north 38.** The waypoint stays 10 units east and 4 units north of the ship.
+ - `R90` rotates the waypoint around the ship clockwise 90 degrees, moving it to **4 units east and 10 units south of the ship.** The ship remains at **east 170, north 38.**
+ - `F11` moves the ship to the waypoint 11 times (a total of **44 units east and 110 units south**), leaving the ship at **east 214, south 72.** The waypoint stays 4 units east and 10 units south of the ship.
+
+ After these operations, the ship's Manhattan distance from its starting position is `214 + 72` = `286`.
+
+ Figure out where the navigation instructions actually lead. **What is the Manhattan distance between that location and the ship's starting position?**
+ */
+
+verify([
+    (exampleInput, 286),
+    (input, 13340)
+]) { actions in
+    actions.reduce(into: Position()) { position, action in
+        position.take(partTwo: action)
+    }.coordinate.distance(to: .origin)
+}
 
 //: [Next](@next)
