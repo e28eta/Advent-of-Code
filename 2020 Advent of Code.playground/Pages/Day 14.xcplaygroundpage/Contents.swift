@@ -75,18 +75,50 @@ enum Instruction {
     }
 }
 
+struct FloatingAddressGenerator {
+    let nonFloatingMask: Int64
+    let floatingBits: [Int8]
+
+    init(_ floatingBits: [Int8]) {
+        nonFloatingMask = floatingBits.reduce(0x7FFFFFFFFFFFFFFF) {
+            $0 ^ (1 << $1)
+        }
+        self.floatingBits = floatingBits
+
+    }
+
+    func generateAddresses(_ base: Int64) -> [Int64] {
+        func combinations<S: Collection>(_ bits: S) -> [Int64] where S.Element == Int8 {
+            guard let thisBit = bits.first else { return [0] }
+
+            return combinations(bits.dropFirst()).flatMap {
+                [$0, $0 | (1 << thisBit)]
+            }
+        }
+        guard floatingBits.count > 0  else {
+            return [base]
+        }
+
+        let maskedBase = base & nonFloatingMask
+        return combinations(floatingBits).map { maskedBase | $0 }
+    }
+}
+
 struct Mask {
     // inverse of bits to set to zero
     let andValue: Int64
     // bits to set to one
     let orValue: Int64
 
+    let addressGenerator: FloatingAddressGenerator
+
     init(_ string: String) {
         var andValue: Int64 = 0
         var orValue: Int64 = 0
+        var floatingBits: [Int8] = []
 
         assert(string.count == 36, "malformed mask: \(string)")
-        for char in string {
+        for (idx, char) in string.enumerated() {
             if char == "1" {
                 orValue = (orValue << 1) | 0x1
             } else {
@@ -98,14 +130,23 @@ struct Mask {
             } else {
                 andValue = (andValue << 1) | 0x1
             }
+
+            if char == "X" {
+                floatingBits.append(35 - Int8(idx))
+            }
         }
 
         self.andValue = andValue
         self.orValue = orValue
+        self.addressGenerator = FloatingAddressGenerator(floatingBits)
     }
 
-    func apply(_ value: Int64) -> Int64 {
+    func apply(value: Int64) -> Int64 {
         return (value & andValue) | orValue
+    }
+
+    func apply(address: Int64) -> [Int64] {
+        return addressGenerator.generateAddresses(address | orValue)
     }
 }
 
@@ -126,7 +167,7 @@ struct Execution {
                 mask = m
             case .write(location: let address, value: var value):
                 if let mask = mask {
-                    value = mask.apply(value)
+                    value = mask.apply(value: value)
                 }
                 memory[address] = value
             }
@@ -152,5 +193,109 @@ verify([
     Execution(s).execute()
 }
 
+/**
+ --- Part Two ---
+
+ For some reason, the sea port's computer system still can't communicate with your ferry's docking program. It must be using **version 2** of the decoder chip!
+
+ A version 2 decoder chip doesn't modify the values being written at all. Instead, it acts as a [memory address decoder](https://www.youtube.com/watch?v=PvfhANgLrm4)\. Immediately before a value is written to memory, each bit in the bitmask modifies the corresponding bit of the destination **memory address** in the following way:
+
+ - If the bitmask bit is `0`, the corresponding memory address bit is **unchanged.**
+ - If the bitmask bit is `1`, the corresponding memory address bit is **overwritten with `1`.**
+ - If the bitmask bit is `X`, the corresponding memory address bit is **floating.**
+
+ A **floating** bit is not connected to anything and instead fluctuates unpredictably. In practice, this means the floating bits will take on **all possible values,** potentially causing many memory addresses to be written all at once!
+
+ For example, consider the following program:
+
+ ```
+ mask = 000000000000000000000000000000X1001X
+ mem[42] = 100
+ mask = 00000000000000000000000000000000X0XX
+ mem[26] = 1
+ ```
+
+ When this program goes to write to memory address `42`, it first applies the bitmask:
+
+ ```
+ address: 000000000000000000000000000000101010  (decimal 42)
+ mask:    000000000000000000000000000000X1001X
+ result:  000000000000000000000000000000X1101X
+ ```
+
+ After applying the mask, four bits are overwritten, three of which are different, and two of which are **floating.** Floating bits take on every possible combination of values; with two floating bits, four actual memory addresses are written:
+
+ ```
+ 000000000000000000000000000000011010  (decimal 26)
+ 000000000000000000000000000000011011  (decimal 27)
+ 000000000000000000000000000000111010  (decimal 58)
+ 000000000000000000000000000000111011  (decimal 59)
+ ```
+
+ Next, the program is about to write to memory address `26` with a different bitmask:
+
+ ```
+ address: 000000000000000000000000000000011010  (decimal 26)
+ mask:    00000000000000000000000000000000X0XX
+ result:  00000000000000000000000000000001X0XX
+ ```
+
+ This results in an address with three floating bits, causing writes to **eight** memory addresses:
+
+ ```
+ 000000000000000000000000000000010000  (decimal 16)
+ 000000000000000000000000000000010001  (decimal 17)
+ 000000000000000000000000000000010010  (decimal 18)
+ 000000000000000000000000000000010011  (decimal 19)
+ 000000000000000000000000000000011000  (decimal 24)
+ 000000000000000000000000000000011001  (decimal 25)
+ 000000000000000000000000000000011010  (decimal 26)
+ 000000000000000000000000000000011011  (decimal 27)
+ ```
+
+ The entire 36-bit address space still begins initialized to the value 0 at every address, and you still need the sum of all values left in memory at the end of the program. In this example, the sum is `208`.
+
+ Execute the initialization program using an emulator for a version 2 decoder chip. **What is the sum of all values left in memory after it completes?**
+ */
+
+struct VersionTwoExecution {
+    let instructions: [Instruction]
+
+    init(_ string: String) {
+        instructions = string.lines().map(Instruction.init)
+    }
+
+    func execute() -> Int64 {
+        guard case .mask(var mask) = instructions.first else { return 0 }
+        var memory: [Int64: Int64] = [:]
+
+        for instruction in instructions {
+            switch instruction {
+            case .mask(let m):
+                mask = m
+            case .write(location: let baseAddress, value: let value):
+                for address in mask.apply(address: baseAddress) {
+                    memory[address] = Int64(value)
+                }
+            }
+        }
+
+        return memory.values.reduce(Int64(), +)
+    }
+}
+
+let example2Input = """
+mask = 000000000000000000000000000000X1001X
+mem[42] = 100
+mask = 00000000000000000000000000000000X0XX
+mem[26] = 1
+"""
+
+verify([
+    (example2Input, Int64(208)),
+    (input, Int64(2900994392308)),
+]) { s in
+    VersionTwoExecution(s).execute()
+}
 
 //: [Next](@next)
