@@ -47,47 +47,6 @@ import Foundation
  Your puzzle input is `20,0,1,11,6,3`.
  */
 
-struct MemoryGame: Sequence {
-    let starting: [Int]
-
-
-    init(_ string: String) {
-        starting = string.split(separator: ",").compactMap({ Int($0) })
-    }
-
-    func makeIterator() -> AnyIterator<Int> {
-        var previous: Int?
-        var turn = 0
-        var startingIterator = starting.makeIterator()
-        var ages = [Int: Int]()
-
-        return AnyIterator {
-            let spoken: Int
-
-            if let startingValue = startingIterator.next() {
-                // always just take the starting values
-                spoken = startingValue
-            } else if let previous = previous, let previousAge = ages[previous] {
-                // last turn was *not* the first time previous was spoken
-                spoken = turn - previousAge
-            } else {
-                // last turn *was* the first time it had been said
-                spoken = 0
-            }
-
-            // update age of previous, if there was one
-            if let previous = previous {
-                ages[previous] = turn
-            }
-
-            // update turn, previous and return the correct value
-            turn += 1
-            previous = spoken
-            return spoken
-        }
-    }
-}
-
 let exampleInput = "0,3,6"
 let input = "20,0,1,11,6,3"
 
@@ -102,6 +61,36 @@ verify([
     (input, 421),
 ]) { s in
     MemoryGame(s).dropFirst(2019).makeIterator().next()
+}
+
+/**
+ --- Part Two ---
+
+ Impressed, the Elves issue you a challenge: determine the `30000000`th number spoken. For example, given the same starting numbers as above:
+
+ - Given `0,3,6`, the `30000000`th number spoken is `175594`.
+ - Given `1,3,2`, the `30000000`th number spoken is `2578`.
+ - Given `2,1,3`, the `30000000`th number spoken is `3544142`.
+ - Given `1,2,3`, the `30000000`th number spoken is `261214`.
+ - Given `2,3,1`, the `30000000`th number spoken is `6895259`.
+ - Given `3,2,1`, the `30000000`th number spoken is `18`.
+ - Given `3,1,2`, the `30000000`th number spoken is `362`.
+
+ \**Given your starting numbers, what will be the 30000000th number spoken?**
+ */
+
+// This is *slow*, but idk how to do it any better?
+verify([
+    (exampleInput, 175594),
+    ("1,3,2", 2578),
+    ("2,1,3", 3544142),
+    ("1,2,3", 261214),
+    ("2,3,1", 6895259),
+    ("3,2,1", 18),
+    ("3,1,2", 362),
+    (input, 436),
+]) { s in
+    MemoryGame(s).dropFirst(30000000 - 1).makeIterator().next()
 }
 
 //: [Next](@next)
