@@ -83,7 +83,7 @@ struct BusSchedule {
         let busses = arr.removeFirst()
 
         self.earliestDeparture = depart.flatMap(Int.init)
-        self.busses = busses.split(separator: ",").map({ Int($0) }).map(Bus.init)
+        self.busses = busses.split(separator: ",").map(Int.init).map(Bus.init)
     }
 
     func part1() -> Int {

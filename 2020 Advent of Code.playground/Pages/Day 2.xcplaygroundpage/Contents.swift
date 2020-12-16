@@ -34,8 +34,8 @@ struct PasswordDbEntry {
         let lineComponents = line.split(separator: " ")
 
         guard lineComponents.count == 3,
-            let range = lineComponents.first?.split(separator: "-").compactMap({ Int($0) }),
-            range.count == 2,
+              let range = lineComponents.first?.split(separator: "-").compactMap(Int.init),
+              range.count == 2,
               let char = lineComponents[1].first else {
             print("Failed to parse DB entry \(line)")
             return nil

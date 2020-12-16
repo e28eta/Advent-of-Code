@@ -5,7 +5,7 @@ public struct MemoryGame: Sequence {
 
 
     public init(_ string: String) {
-        starting = string.split(separator: ",").compactMap({ Int($0) })
+        starting = string.split(separator: ",").compactMap(Int.init)
     }
 
     public func makeIterator() -> AnyIterator<Int> {
