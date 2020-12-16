@@ -43,34 +43,26 @@ typealias Color = String
 
 struct Bag {
     let color: Color
-    let capacity: [Color: Int]
+    let contents: [Color: Int]
 
     init?(_ string: String) {
-        let firstSplit = string.components(separatedBy: " bags contain ")
-        guard firstSplit.count == 2,
-              let color = firstSplit.first,
-              let contents = firstSplit.last else { return nil }
+        guard let (color, contentRules) = string.splitOnce(separator: " bags contain ")
+        else { return nil }
 
-        self.color = color
+        self.color = String(color)
 
-        if contents == "no other bags." {
-            capacity = [:]
+        if contentRules == "no other bags." {
+            contents = [:]
             return
         }
-        let bags: [String]
-        if contents.contains(",") {
-            bags = contents.components(separatedBy: ", ")
-        } else {
-            bags = [contents]
-        }
 
-        capacity = bags.map {
-            $0.split(separator: " ")
-        }.reduce(into: [:]) { dict, bagComponents in
-            guard bagComponents.count == 4,
-                  let count = Int(bagComponents[0]) else { return }
-            dict["\(bagComponents[1]) \(bagComponents[2])"] = count
-        }
+        contents = contentRules.components(separatedBy: ", ")
+            .map { $0.split(separator: " ") }
+            .reduce(into: [:]) { dict, bagComponents in
+                guard bagComponents.count == 4,
+                      let count = Int(bagComponents[0]) else { return }
+                dict["\(bagComponents[1]) \(bagComponents[2])"] = count
+            }
     }
 }
 
@@ -94,7 +86,7 @@ func canContain(color: Color = "shiny gold", rules: [Bag]) -> [Color] {
         alreadyChecked.insert(nextColor)
 
         let canDirectlyContain = rules.filter {
-            $0.capacity[nextColor] != nil
+            $0.contents[nextColor] != nil
         }.map {
             $0.color
         }
@@ -162,7 +154,7 @@ class BagRules {
             requiredContentCount[color] = .none // mark as currently calculating this color
             guard let bag = bags[color] else { fatalError("missing rules for \(color)") }
 
-            let count = bag.capacity.reduce(0) { (sum, keyValue) in
+            let count = bag.contents.reduce(0) { (sum, keyValue) in
                 let (nextColor, count) = keyValue
 
                 return sum + count + (count * contentCount(for: nextColor))

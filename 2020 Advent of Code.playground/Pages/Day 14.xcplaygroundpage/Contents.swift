@@ -59,18 +59,20 @@ enum Instruction {
     case mask(Mask)
     case write(location: Int64, value: Int64)
 
+    static let maskPrefix = "mask = "
+    static let maskPrefixLength = maskPrefix.count
+
     init(_ string: String) {
-        if string.hasPrefix("mask = ") {
-            let mask = String(string.dropFirst(7))
-            self = .mask(Mask(mask))
+        if string.hasPrefix(Instruction.maskPrefix) {
+            self = .mask(Mask(string.dropFirst(Instruction.maskPrefixLength)))
         } else {
-            let arr = string.dropFirst(4).components(separatedBy: "] = ")
-            guard arr.count == 2,
-                  let addr = Int64(arr[0]),
-                  let value = Int64(arr[1]) else {
+            let numbers = string.dropFirst(4)
+                .components(separatedBy: "] = ")
+                .compactMap(Int64.init)
+            guard numbers.count == 2 else {
                 fatalError("malformed memory write: \(string)")
             }
-            self = .write(location: addr, value: value)
+            self = .write(location: numbers[0], value: numbers[1])
         }
     }
 }
@@ -112,7 +114,7 @@ struct Mask {
 
     let addressGenerator: FloatingAddressGenerator
 
-    init(_ string: String) {
+    init<S: StringProtocol>(_ string: S) {
         var andValue: Int64 = 0
         var orValue: Int64 = 0
         var floatingBits: [Int8] = []

@@ -64,16 +64,6 @@ struct Seat {
     }
 }
 
-func seatId(_ string: String) -> Int {
-    let binary = string.replacingOccurrences(of: "F", with: "0")
-        .replacingOccurrences(of: "B", with: "1")
-        .replacingOccurrences(of: "L", with: "0")
-        .replacingOccurrences(of: "R", with: "1")
-    guard let value = Int(binary, radix: 2) else { fatalError("couldn't parse \(string), \(binary)") }
-
-    return value
-}
-
 verify([
     ("FBFBBFFRLR", [44, 5, 357]),
     ("BFFFBBFRRR", [70, 7, 567]),

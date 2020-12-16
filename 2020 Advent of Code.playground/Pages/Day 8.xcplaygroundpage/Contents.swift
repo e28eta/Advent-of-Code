@@ -60,8 +60,8 @@ enum Instruction {
     case jmp(Int)
 
     init(_ string: String) {
-        let comps = string.replacingOccurrences(of: "+", with: "").split(separator: " ")
-        guard let instruction = comps.first, let amount = comps.last.flatMap({ Int($0) }) else {
+        guard let (instruction, amountString) = string.replacingOccurrences(of: "+", with: "").splitOnce(separator: " "),
+              let amount = Int(amountString) else {
             fatalError("Error parsing: \(string)")
         }
         switch instruction {

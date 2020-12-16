@@ -119,10 +119,9 @@ struct Passport {
         fields = string.replacingOccurrences(of: "\n", with: " ")
             .split(separator: " ")
             .reduce(into: [:]) { (parsed, s) in
-                let arr = s.split(separator: ":")
-                if arr.count == 2, let field = Field(rawValue: String(arr[0])) {
-                    parsed[field] = String(arr[1])
-                }
+                guard let (fieldString, value) = s.splitOnce(separator: ":"),
+                      let field = Field(rawValue: String(fieldString)) else { return }
+                parsed[field] = String(value)
             }
     }
 
