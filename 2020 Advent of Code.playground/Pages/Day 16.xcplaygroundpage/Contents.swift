@@ -53,7 +53,7 @@ import Foundation
 struct Ticket {
     let values: [Int]
 
-    init(_ string: String) {
+    init<S: StringProtocol>(_ string: S) {
         values = string.split(separator: ",").compactMap(Int.init)
     }
 }
@@ -62,14 +62,17 @@ struct Rule: Hashable {
     let label: String
     let validValues: MultipleClosedRanges<Int>
 
-    init(_ string: String) {
-        let arr = string.components(separatedBy: ": ")
-        assert(arr.count == 2, "missing colon?")
-        label = arr[0]
-        let ranges: [ClosedRange<Int>] = arr[1].components(separatedBy: " or ").map {
-            let nums = $0.split(separator: "-").compactMap(Int.init)
-            assert(nums.count == 2)
-            return (nums[0]...nums[1])
+    init?(_ string: String) {
+        guard let (label, rangeString) = string.splitOnce(separator: ": ") else {
+            return nil
+        }
+        self.label = String(label)
+        let ranges = rangeString.components(separatedBy: " or ").compactMap { s -> ClosedRange<Int>? in
+            guard let (first, second) = s.splitOnce(separator: "-"),
+                  let lower = Int(first),
+                  let upper = Int(second) else { return nil }
+
+            return (lower...upper)
         }
         validValues = MultipleClosedRanges(ranges)
     }
@@ -92,14 +95,13 @@ struct TicketDocument {
     let scanningErrorRate: Int
 
     init?(_ string: String) {
-        let arr = string.components(separatedBy: "\n\nyour ticket:\n")
-        guard arr.count == 2 else { return nil }
-        let tickets = arr[1].components(separatedBy: "\n\nnearby tickets:\n")
-        guard tickets.count == 2 else { return nil }
+        guard let (ruleString, allTicketString) = string.splitOnce(separator: "\n\nyour ticket:\n"),
+              let (myTicketString, nearbyTicketsString) = allTicketString.splitOnce(separator: "\n\nnearby tickets:\n")
+        else { return nil }
 
-        rules = arr[0].lines().map(Rule.init)
-        myTicket = tickets[0].lines().map(Ticket.init).first!
-        nearbyTickets = tickets[1].lines().map(Ticket.init)
+        rules = ruleString.lines().compactMap(Rule.init)
+        myTicket = Ticket(myTicketString)
+        nearbyTickets = nearbyTicketsString.lines().map(Ticket.init)
 
         let allValidValues = MultipleClosedRanges(rules.flatMap(\.validValues.combinedRanges))
 

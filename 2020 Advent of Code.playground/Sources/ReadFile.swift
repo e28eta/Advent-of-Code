@@ -9,6 +9,3 @@ public func readResourceFile(_ fileName: String) throws -> String {
     return try String(contentsOf: path, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
 }
 
-extension String {
-    public func lines() -> [String] { return components(separatedBy: .newlines) }
-}
