@@ -119,10 +119,10 @@ enum Token: CustomStringConvertible, Equatable {
  hand-rolled recursive descent LL(1) parser, I think
  */
 
-indirect enum Expression: CustomStringConvertible {
-    case factor(Factor, ExpressionPrime?)
+indirect enum Part1Expression: CustomStringConvertible {
+    case factor(Part1Factor, Part1ExpressionPrime?)
 
-    static func topLevelParse(from tokens: [Token]) -> Expression? {
+    static func topLevelParse(from tokens: [Token]) -> Part1Expression? {
         do {
             let (expression, remaining) = try parse(from: tokens[tokens.startIndex..<tokens.endIndex])
             guard remaining.count == 0 else {
@@ -136,9 +136,9 @@ indirect enum Expression: CustomStringConvertible {
         }
     }
 
-    static func parse<T: Collection>(from tokens: T) throws -> (Expression, T) where T.Element == Token, T.SubSequence == T {
-        let (factor, remaining) = try Factor.parse(from: tokens)
-        let (exprPrime, final) = try ExpressionPrime.parse(from: remaining)
+    static func parse<T: Collection>(from tokens: T) throws -> (Part1Expression, T) where T.Element == Token, T.SubSequence == T {
+        let (factor, remaining) = try Part1Factor.parse(from: tokens)
+        let (exprPrime, final) = try Part1ExpressionPrime.parse(from: remaining)
 
         return (.factor(factor, exprPrime), final)
     }
@@ -162,16 +162,16 @@ indirect enum Expression: CustomStringConvertible {
     }
 }
 
-indirect enum ExpressionPrime: CustomStringConvertible {
-    case addition(Factor, ExpressionPrime?)
-    case multiplication(Factor, ExpressionPrime?)
+indirect enum Part1ExpressionPrime: CustomStringConvertible {
+    case addition(Part1Factor, Part1ExpressionPrime?)
+    case multiplication(Part1Factor, Part1ExpressionPrime?)
 
-    static func parse<T: Collection>(from tokens: T) throws -> (ExpressionPrime?, T) where T.Element == Token, T.SubSequence == T {
+    static func parse<T: Collection>(from tokens: T) throws -> (Part1ExpressionPrime?, T) where T.Element == Token, T.SubSequence == T {
         guard let next = tokens.first, next == .plus || next == .multiply else {
             return (nil, tokens)
         }
-        let (factor, remaining) = try Factor.parse(from: tokens.dropFirst())
-        let (exprPrime, final) = try ExpressionPrime.parse(from: remaining)
+        let (factor, remaining) = try Part1Factor.parse(from: tokens.dropFirst())
+        let (exprPrime, final) = try Part1ExpressionPrime.parse(from: remaining)
 
         switch next {
         case .plus:
@@ -220,11 +220,11 @@ enum ParseError: Error {
     case unbalancedParens
 }
 
-indirect enum Factor: CustomStringConvertible {
+indirect enum Part1Factor: CustomStringConvertible {
     case literal(Int)
-    case parenthetical(Expression)
+    case parenthetical(Part1Expression)
 
-    static func parse<T: Collection>(from tokens: T) throws -> (Factor, T) where T.Element == Token, T.SubSequence == T {
+    static func parse<T: Collection>(from tokens: T) throws -> (Part1Factor, T) where T.Element == Token, T.SubSequence == T {
         guard let next = tokens.first else {
             throw ParseError.literalNotFound
         }
@@ -233,7 +233,7 @@ indirect enum Factor: CustomStringConvertible {
         case let .number(value):
             return (.literal(value), tokens.dropFirst())
         case .leftParen:
-            let (expression, remaining) = try Expression.parse(from: tokens.dropFirst())
+            let (expression, remaining) = try Part1Expression.parse(from: tokens.dropFirst())
             guard remaining.first == .rightParen else {
                 throw ParseError.unbalancedParens
             }
@@ -272,15 +272,241 @@ let exampleInput = [
 ]
 
 verify(exampleInput) { s in
-    Expression.topLevelParse(from: Token.tokens(from: s))?.evaluate() ?? -1
+    Part1Expression.topLevelParse(from: Token.tokens(from: s))?.evaluate() ?? -1
 }
 
-let input = try readResourceFile("input.txt")
-let answer = input.lines()
-    .map(Token.tokens)
-    .compactMap(Expression.topLevelParse)
+let input = try readResourceFile("input.txt").lines().map(Token.tokens)
+let partOne = input
+    .compactMap(Part1Expression.topLevelParse)
     .reduce(0) { $0 + $1.evaluate() }
 
-assertEqual(answer, 11076907812171)
+assertEqual(partOne, 11076907812171)
+
+/**
+ --- Part Two ---
+
+ You manage to answer the child's questions and they finish part 1 of their homework, but get stuck when they reach the next section: **advanced** math.
+
+ Now, addition and multiplication have **different** precedence levels, but they're not the ones you're familiar with. Instead, addition is evaluated **before** multiplication.
+
+ For example, the steps to evaluate the expression `1 + 2 * 3 + 4 * 5 + 6` are now as follows:
+
+ ```
+ 1 + 2 * 3 + 4 * 5 + 6
+ 3   * 3 + 4 * 5 + 6
+ 3   *   7   * 5 + 6
+ 3   *   7   *  11
+ 21       *  11
+        231
+ ```
+
+ Here are the other examples from above:
+
+ - `1 + (2 * 3) + (4 * (5 + 6))` still becomes `51`.
+ - `2 * 3 + (4 * 5)` becomes `46`.
+ - `5 + (8 * 3 + 9 + 3 * 4 * 3)` becomes `1445`.
+ - `5 * 9 * (7 * 3 * 3 + 9 * 3 + (8 + 6 * 4))` becomes `669060`.
+ - `((2 + 4 * 9) * (6 + 9 * 8 + 6) + 6) + 2 + 4 * 2` becomes `23340`.
+
+ \**What do you get if you add up the results of evaluating the homework problems using these new rules?**
+ */
+
+indirect enum Part2Expression: CustomStringConvertible {
+    case term(Part2Term, Part2ExpressionPrime?)
+
+    static func topLevelParse(from tokens: [Token]) -> Part2Expression? {
+        do {
+            let (expression, remaining) = try parse(from: tokens[tokens.startIndex..<tokens.endIndex])
+            guard remaining.count == 0 else {
+                print("unconsumed tokens!", remaining)
+                return nil
+            }
+            return expression
+        } catch {
+            print("error parsing tokens", error)
+            return nil
+        }
+    }
+
+    static func parse<T: Collection>(from tokens: T) throws -> (Part2Expression, T) where T.Element == Token, T.SubSequence == T {
+        let (term, remaining) = try Part2Term.parse(from: tokens)
+        let (exprPrime, final) = try Part2ExpressionPrime.parse(from: remaining)
+
+        return (.term(term, exprPrime), final)
+    }
+
+    func evaluate() -> Int {
+        switch self {
+        case .term(let term, .none):
+            return term.evaluate()
+        case .term(let term, .some(let exprPrime)):
+            return exprPrime.evaluate(term.evaluate())
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .term(let term, .none):
+            return term.description
+        case .term(let term, .some(let exprPrime)):
+            return term.description + " " + exprPrime.description
+        }
+    }
+}
+
+indirect enum Part2ExpressionPrime: CustomStringConvertible {
+    case multiplication(Part2Term, Part2ExpressionPrime?)
+
+    static func parse<T: Collection>(from tokens: T) throws -> (Part2ExpressionPrime?, T) where T.Element == Token, T.SubSequence == T {
+        guard let next = tokens.first, next == .multiply else {
+            return (nil, tokens)
+        }
+        let (term, remaining) = try Part2Term.parse(from: tokens.dropFirst())
+        let (exprPrime, final) = try Part2ExpressionPrime.parse(from: remaining)
+
+        return (.multiplication(term, exprPrime), final)
+    }
+
+    var description: String {
+        switch self {
+        case let .multiplication(factor, .some(exprPrime)):
+            return "* \(factor.description) \(exprPrime.description)"
+        case let .multiplication(factor, .none):
+            return "* \(factor.description)"
+        }
+    }
+
+    func evaluate(_ lhs: Int) -> Int {
+        switch self {
+        case .multiplication(let factor, .none):
+            return lhs * factor.evaluate()
+        case .multiplication(let factor, .some(let exprPrime)):
+            return exprPrime.evaluate(lhs * factor.evaluate())
+        }
+    }
+}
+
+indirect enum Part2Term: CustomStringConvertible {
+    case factor(Part2Factor, Part2TermPrime?)
+
+    static func parse<T: Collection>(from tokens: T) throws -> (Part2Term, T) where T.Element == Token, T.SubSequence == T {
+        let (factor, remaining) = try Part2Factor.parse(from: tokens)
+        let (termPrime, final) = try Part2TermPrime.parse(from: remaining)
+
+        return (.factor(factor, termPrime), final)
+    }
+
+    func evaluate() -> Int {
+        switch self {
+        case .factor(let factor, .none):
+            return factor.evaluate()
+        case .factor(let factor, .some(let termPrime)):
+            return termPrime.evaluate(factor.evaluate())
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .factor(let factor, .none):
+            return factor.description
+        case .factor(let factor, .some(let termPrime)):
+            return factor.description + " " + termPrime.description
+        }
+    }}
+
+indirect enum Part2TermPrime: CustomStringConvertible {
+    case addition(Part2Factor, Part2TermPrime?)
+
+    static func parse<T: Collection>(from tokens: T) throws -> (Part2TermPrime?, T) where T.Element == Token, T.SubSequence == T {
+        guard let next = tokens.first, next == .plus else {
+            return (nil, tokens)
+        }
+        let (factor, remaining) = try Part2Factor.parse(from: tokens.dropFirst())
+        let (termPrime, final) = try Part2TermPrime.parse(from: remaining)
+
+        return (.addition(factor, termPrime), final)
+    }
+
+
+    var description: String {
+        switch self {
+        case let .addition(factor, .some(termPrime)):
+            return "+ \(factor.description) \(termPrime.description)"
+        case let .addition(term, .none):
+            return "+ \(term.description)"
+
+        }
+    }
+
+    func evaluate(_ lhs: Int) -> Int {
+        switch self {
+        case .addition(let factor, .none):
+            return lhs + factor.evaluate()
+        case .addition(let factor, .some(let termPrime)):
+            return termPrime.evaluate(lhs + factor.evaluate())
+        }
+    }
+}
+
+indirect enum Part2Factor: CustomStringConvertible {
+    case literal(Int)
+    case parenthetical(Part2Expression)
+
+    static func parse<T: Collection>(from tokens: T) throws -> (Part2Factor, T) where T.Element == Token, T.SubSequence == T {
+        guard let next = tokens.first else {
+            throw ParseError.literalNotFound
+        }
+
+        switch next {
+        case let .number(value):
+            return (.literal(value), tokens.dropFirst())
+        case .leftParen:
+            let (expression, remaining) = try Part2Expression.parse(from: tokens.dropFirst())
+            guard remaining.first == .rightParen else {
+                throw ParseError.unbalancedParens
+            }
+            return (.parenthetical(expression), remaining.dropFirst())
+        default:
+            throw ParseError.literalNotFound
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .literal(let value):
+            return value.description
+        case .parenthetical(let expr):
+            return "( \(expr.description) )"
+        }
+    }
+
+    func evaluate() -> Int {
+        switch self {
+        case .literal(let value):
+            return value
+        case .parenthetical(let expr):
+            return expr.evaluate()
+        }
+    }
+}
+
+let examplePartTwo = [
+    ("1 + 2 * 3 + 4 * 5 + 6", 231),
+    ("1 + (2 * 3) + (4 * (5 + 6))", 51),
+    ("2 * 3 + (4 * 5)", 46),
+    ("5 + (8 * 3 + 9 + 3 * 4 * 3)", 1445),
+    ("5 * 9 * (7 * 3 * 3 + 9 * 3 + (8 + 6 * 4))", 669060),
+    ("((2 + 4 * 9) * (6 + 9 * 8 + 6) + 6) + 2 + 4 * 2", 23340),
+]
+
+verify(examplePartTwo) { s in
+    Part2Expression.topLevelParse(from: Token.tokens(from: s))?.evaluate() ?? -1
+}
+
+let partTwo = input
+    .compactMap(Part2Expression.topLevelParse)
+    .reduce(0) { $0 + $1.evaluate() }
+
+assertEqual(partTwo, 283729053022731)
 
 //: [Next](@next)
