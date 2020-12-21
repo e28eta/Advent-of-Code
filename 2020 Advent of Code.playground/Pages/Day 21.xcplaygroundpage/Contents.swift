@@ -86,20 +86,63 @@ struct Choices {
     }
 }
 
-let exampleInput = """
+let exampleInput = Choices("""
 mxmxvkd kfcds sqjhc nhms (contains dairy, fish)
 trh fvjkl sbzzf mxmxvkd (contains dairy)
 sqjhc fvjkl (contains soy)
 sqjhc mxmxvkd sbzzf (contains fish)
-"""
-let input = try readResourceFile("input.txt")
+""")
+let input = try Choices(readResourceFile("input.txt"))
 
 verify([
     (exampleInput, 5),
     (input, 2265),
 ]) {
-    Choices($0).safeIngredientUsageCount()
+    $0.safeIngredientUsageCount()
 }
 
+/**
+ --- Part Two ---
+
+ Now that you've isolated the inert ingredients, you should have enough information to figure out which ingredient contains which allergen.
+
+ In the above example:
+
+ - `mxmxvkd` contains `dairy`.
+ - `sqjhc` contains `fish`.
+ - `fvjkl` contains `soy`.
+
+ Arrange the ingredients **alphabetically by their allergen** and separate them by commas to produce your **canonical dangerous ingredient list.** (There should **not be any spaces** in your canonical dangerous ingredient list.) In the above example, this would be `mxmxvkd,sqjhc,fvjkl`.
+
+ Time to stock your raft with supplies. **What is your canonical dangerous ingredient list?**
+ */
+
+extension Choices {
+    func solveAllergens() -> String {
+        var possibleAllergens = allergenIngredients
+        var solvedAllergens = possibleAllergens.filter({ $0.value.count == 1})
+
+        var newlySolved = solvedAllergens
+        while (solvedAllergens.count < allergenIngredients.count) {
+            for (solvedAllergen, solvedIngredient) in newlySolved {
+                for (allergen, possibleIngredients) in possibleAllergens where solvedAllergen != allergen {
+                    possibleAllergens[allergen] = possibleIngredients.subtracting(solvedIngredient)
+                }
+            }
+
+            newlySolved = possibleAllergens.filter({ $0.value.count == 1 && solvedAllergens[$0.key] == nil })
+            solvedAllergens.merge(newlySolved) { fatalError("duplicate allergen with two values \($0) \($1)") }
+        }
+
+        return solvedAllergens.sorted { $0.key < $1.key }
+            .map { $0.value.first! }
+            .joined(separator: ",")
+    }
+}
+
+verify([
+    (exampleInput, "mxmxvkd,sqjhc,fvjkl"),
+    (input, "dtb,zgk,pxr,cqnl,xkclg,xtzh,jpnv,lsvlx")
+]) { $0.solveAllergens() }
 
 //: [Next](@next)
