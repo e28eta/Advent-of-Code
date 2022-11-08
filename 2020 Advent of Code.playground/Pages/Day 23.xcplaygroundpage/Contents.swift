@@ -84,82 +84,6 @@ import Foundation
  Your puzzle input is `247819356`.
  */
 
-struct RepeatingCollection<A: RandomAccessCollection>: RandomAccessCollection where A.Index == Int {
-    typealias Element = A.Element
-    typealias Index = A.Index
-    typealias SubSequence = ArraySlice<Element>
-    typealias Indices = Range<A.Index>
-
-    let wrapped: A
-    let wrappedLength: Int
-
-    let startIndex: Int = 0
-    var endIndex: Int = Int.max
-
-    init(_ wrapped: A) {
-        self.wrapped = wrapped
-        self.wrappedLength = wrapped.count
-    }
-
-    subscript(position: Int) -> A.Element {
-        get {
-            wrapped[wrapped.startIndex + position % wrappedLength]
-        }
-    }
-}
-
-struct CrabCups {
-    var cups: [Int]
-    let cupCount: Int
-    var currentCup: Int
-
-    init(_ string: String) {
-        cups = string.compactMap({ Int(String($0)) })
-        cupCount = cups.count
-        currentCup = 0
-    }
-
-    mutating func move(times: UInt) {
-        for _ in (0..<times) {
-            move()
-        }
-    }
-
-    mutating func move() {
-        let currentCupValue = cups[currentCup]
-        let removedCups = RepeatingCollection(cups).lazy.dropFirst(currentCup + 1).prefix(3)
-
-        for c in removedCups {
-            guard let idx = cups.firstIndex(of: c) else { continue }
-            cups.remove(at: idx)
-        }
-
-        let sortedCups = cups.sorted()
-        let destinationValue: Int
-        if let idxInSorted = sortedCups.firstIndex(where: { $0 == currentCupValue }),
-           idxInSorted > 0 {
-            // cup with value just below current
-            destinationValue = sortedCups[idxInSorted - 1]
-        } else {
-            // otherwise, highest valued cup
-            destinationValue = sortedCups.last!
-        }
-
-        let destinationIndex = (cups.firstIndex(of: destinationValue)! + 1) % cupCount
-        for c in removedCups.reversed() {
-            cups.insert(c, at: destinationIndex)
-        }
-
-        currentCup = (cups.firstIndex(of: currentCupValue)! + 1) % cupCount
-    }
-
-    var cupString: String {
-        let idx = cups.firstIndex(of: 1)!
-        return RepeatingCollection(cups).lazy.dropFirst(idx + 1).prefix(cupCount - 1).map(\.description).joined()
-    }
-}
-
-
 var exampleInput = "389125467"
 var input = "247819356"
 
@@ -172,4 +96,31 @@ verify([
     return cups.cupString
 }
 
+/**
+ --- Part Two ---
+
+ Due to what you can only assume is a mistranslation (you're not exactly fluent in Crab), you are quite surprised when the crab starts arranging **many** cups in a circle on your raft - **one million** (`1000000`) in total.
+
+ Your labeling is still correct for the first few cups; after that, the remaining cups are just numbered in an increasing fashion starting from the number after the highest number in your list and proceeding one by one until one million is reached. (For example, if your labeling were `54321`, the cups would be numbered `5`, `4`, `3`, `2`, `1`, and then start counting up from `6` until one million is reached.) In this way, every number from one through one million is used exactly once.
+
+ After discovering where you made the mistake in translating Crab Numbers, you realize the small crab isn't going to do merely 100 moves; the crab is going to do **ten million** (`10000000`) moves!
+
+ The crab is going to hide your stars - one each - under the **two cups that will end up immediately clockwise of cup `1`**. You can have them if you predict what the labels on those cups will be when the crab is finished.
+
+ In the above example (`389125467`), this would be `934001` and then `159792`; multiplying these together produces `149245887792`.
+
+ Determine which two cups will end up immediately clockwise of cup `1`. **What do you get if you multiply their labels together?**
+ */
+
+verify([
+    (exampleInput, 149245887792),
+//    (input, "76385429"),
+]) {
+    var cups = LinkedCrabCups($0, additionalCupCount: 1_000_000 - $0.count)
+    cups.move(times: 10_000_000)
+    return cups.partTwoValue
+}
+var p2 = LinkedCrabCups(input, additionalCupCount: 1_000_000 - input.count)
+p2.move(times: 10_000_000)
+print(p2.partTwoValue)
 //: [Next](@next)
