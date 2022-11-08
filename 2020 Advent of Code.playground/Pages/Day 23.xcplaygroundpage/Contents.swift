@@ -114,13 +114,9 @@ verify([
 
 verify([
     (exampleInput, 149245887792),
-//    (input, "76385429"),
+    (input, 12621748849),
 ]) {
-    var cups = LinkedCrabCups($0, additionalCupCount: 1_000_000 - $0.count)
-    cups.move(times: 10_000_000)
-    return cups.partTwoValue
+    return CupList.partTwo(input: $0)
 }
-var p2 = LinkedCrabCups(input, additionalCupCount: 1_000_000 - input.count)
-p2.move(times: 10_000_000)
-print(p2.partTwoValue)
+
 //: [Next](@next)

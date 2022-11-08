@@ -99,14 +99,104 @@ public struct CrabCups {
         let idx = cups.firstIndex(of: 1)!
         return RepeatingCollection(cups).lazy.dropFirst(idx + 1).prefix(cupCount - 1).map(\.description).joined()
     }
+}
 
-    public var partTwoValue: Int {
-        let idx = cups.firstIndex(of: 1)!
-        return RepeatingCollection(cups).lazy.dropFirst(idx + 1).prefix(2).reduce(1, *)
+/*
+ the leap I didn't make on my own: since names are unique and contiguous, just use
+ array storage, and array[cupName] tells you the clockwise cup. Just like linkedList,
+ only have to update the neighbors for insert/move, but also get O(1) lookup for free.
+
+ Still lots of "steps", and that means it's slower in the Playground than I'd like,
+ but this finishes fast enough.
+
+ */
+public struct CupList {
+    /// storage for cups, array index is cup name, value stored in the array is the clockwise neighbor
+    var storage: [Int]
+    /// name/number of the largest cup
+    let maxCup: Int
+    /// name/number of the smallest cup
+    let minCup: Int
+
+    public init(_ cups: [Int]) {
+        storage = Array(repeating: -1, count: cups.count + 1)
+
+        for (cupName, clockwiseNeighbor) in zip(cups, (cups + [cups.first!]).dropFirst()) {
+            storage[cupName] = clockwiseNeighbor
+        }
+
+        storage[0] = cups.first!
+        minCup = 1
+        maxCup = cups.count
+    }
+
+    public mutating func move() {
+        let currentCupValue = storage[0]
+
+        // neighbor to current Cup
+        var removedCups = [storage[currentCupValue]]
+        // 2nd neighbor
+        removedCups.append(storage[removedCups.last!])
+        // 3rd neighbor
+        removedCups.append(storage[removedCups.last!])
+
+        // "remove" them, by making current Cup's neighbor the 4th neighbor
+        storage[currentCupValue] = storage[removedCups.last!]
+
+        // who should they be clockwise from
+        let destination = destinationValue(for: currentCupValue, removedCups: removedCups)
+        // who used to be clockwise of the destination
+        let oldNeighbor = storage[destination]
+
+        // put the moved cups clockwise from destination
+        storage[destination] = removedCups.first!
+        // and then re-connect with destination's old neighbor
+        storage[removedCups.last!] = oldNeighbor
+
+        // and move clockwise one step
+        storage[0] = storage[currentCupValue]
+    }
+
+    func destinationValue<C: Collection>(for current: Int, removedCups: C) -> Int where C.Element == Int {
+        var candidate = current - 1
+
+        while true {
+            if removedCups.contains(candidate) {
+                candidate -= 1
+            } else if candidate < minCup {
+                candidate = maxCup
+            } else /* minCup <= candidate <= maxCup && !contains */ {
+                return candidate
+            }
+        }
+    }
+
+    public static func partTwo(input string: String, totalCupCount: Int = 1_000_000, steps: Int = 10_000_000) -> Int {
+        let labeledCups = string.compactMap({ Int(String($0)) })
+        precondition(labeledCups.min() == 1)
+        precondition(labeledCups.max() == labeledCups.count)
+
+        let unlabeledCupStart = 1 + (labeledCups.max() ?? 0)
+        let additionalCups = unlabeledCupStart ..< unlabeledCupStart + (totalCupCount - labeledCups.count)
+
+        var cupList = CupList(labeledCups + additionalCups)
+
+        for _ in (0 ..< steps) {
+            cupList.move()
+        }
+
+        let firstNeighbor = cupList.storage[1]
+        let secondNeighbor = cupList.storage[firstNeighbor]
+
+        return firstNeighbor * secondNeighbor
     }
 }
 
-
+/*
+ Failed experiment. I correctly identified that I wanted to easily update neighbors,
+ and *also* needed fast lookup. I think the main problem with this approach was trying
+ to make a Swift Collection / conforming to making the Index comparable.
+ */
 public struct LinkedCrabCups {
     /// LinkedList of cups, where value is the name / number of the cup
     var cupList: LinkedList<Int>
