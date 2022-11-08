@@ -50,15 +50,17 @@ public struct HexGrid<Element: Hashable & Flippable> {
         xRange = xRange.expand(lower: 2, upper: 2)
         yRange = yRange.expand(lower: 1, upper: 1)
 
+        print("coordinates span \(xRange) and \(yRange)")
+
         return AnySequence {
             var iterator = yRange
                 .lazy
                 .reversed()
                 .flatMap { currentY in
-                    let yModulo2 = abs(currentY % 2)
+                    let yModulo2 = currentY % 2
                     return xRange
                         .lazy
-                        .filter { abs($0 % 2) == yModulo2 }
+                        .filter { $0 % 2 == yModulo2 }
                         .map({ HexCoordinate(x: $0, y: currentY) })
                 }
                 .makeIterator()
@@ -72,14 +74,17 @@ extension HexGrid where Element: CustomStringConvertible & ConwayRule {
     public var description: String {
         let (xRange, yRange) = bounds()
 
-        return "\t" + xRange.map(\.description).joined(separator: "\t") + "\n"
-        + yRange.reversed()
+        return xRange
+            .map(\.description)
+            .joined(separator: "\t")
+        + yRange
+            .reversed()
             .map { currentY in
-                let yModulo2 = abs(currentY % 2)
+                let yModulo2 = currentY % 2
                 
                 return currentY.description + "\t" + xRange
                     .map { currentX in
-                        if abs(currentX % 2) == yModulo2 {
+                        if currentX % 2 == yModulo2 {
                             return currentState[HexCoordinate(x: currentX, y: currentY),
                                                 default: Element.defaultValue()].description
                         } else {
@@ -102,9 +107,12 @@ extension HexGrid where Element: ConwayRule {
                 .map { originalState[$0, default: elementDefaultValue] }
             let coordState = originalState[coordinate, default: elementDefaultValue]
 
+            var didChange = false
             if coordState.shouldChange(neighbors: neighbors) {
+                didChange = true
                 currentState[coordinate] = coordState.changedValue()
             }
+            print(coordinate, coordState, didChange ? "⇾ \(currentState[coordinate]!)" : "\t", neighbors)
         }
 
         // trim the state, getting rid of any default value entries

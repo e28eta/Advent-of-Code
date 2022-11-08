@@ -131,16 +131,19 @@ verify([
  **How many tiles will be black after 100 days?**
  */
 
-verify([
-    (exampleGrid, 2208),
-    (inputGrid, 4038),
-]) { immutable in
-    var grid = immutable
-    for _ in (1...100) {
-        grid.step()
-    }
-    return grid.blackCount
+var conwayExampleGrid = exampleGrid
+
+print(0, conwayExampleGrid.blackCount)
+print(conwayExampleGrid.description)
+
+
+for n in (1...1) {
+    conwayExampleGrid.step()
+    print(n, conwayExampleGrid.blackCount)
+    print(conwayExampleGrid)
 }
+
+//return grid.visitedStates { $0 == .black }.count
 
 
 //: [Next](@next)

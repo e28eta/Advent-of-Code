@@ -1,7 +1,12 @@
 import Foundation
 
-public struct Point: Hashable {
+public struct HexCoordinate: Hashable, CustomStringConvertible {
     public let x: Int, y: Int
+
+    public init(x: Int, y: Int) {
+        self.x = x
+        self.y = y
+    }
 
     public init<S: Sequence<Character>>(_ string: S) throws {
         var x = 0, y = 0
@@ -45,5 +50,22 @@ public struct Point: Hashable {
 
         self.x = x
         self.y = y
+    }
+
+    public func neighbors() -> [HexCoordinate] {
+        return [
+            (-2, 0),
+            (-1, 1),
+            (-1, -1),
+            (1, 1),
+            (1, -1),
+            (2, 0)
+        ].map { (dx, dy) in
+            HexCoordinate(x: x + dx, y: y + dy)
+        }
+    }
+
+    public var description: String {
+        return "(\(x),\(y))"
     }
 }
