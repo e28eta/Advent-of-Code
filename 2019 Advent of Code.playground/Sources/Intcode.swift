@@ -30,6 +30,7 @@ public struct IntcodeComputer {
 
     public mutating func step() throws {
         let op = try IntcodeOperator(memory[instructionPointer...])
+        var didJump = false
 
         switch op {
         case let .add(left: left, right: right, destination: destination):
@@ -43,9 +44,23 @@ public struct IntcodeComputer {
             output.append(value(for: source))
         case .halt:
             running = false
+        case let .jumpIfTrue(compare: compare, newInstructionPointer: newInstructionPointer):
+            if value(for: compare) != 0 {
+                instructionPointer = value(for: newInstructionPointer)
+                didJump = true
+            }
+        case let .jumpIfFalse(compare: compare, newInstructionPointer: newInstructionPointer):
+            if value(for: compare) == 0 {
+                instructionPointer = value(for: newInstructionPointer)
+                didJump = true
+            }
+        case let .lessThan(left: left, right: right, destination: destination):
+            memory[destination] = value(for: left) < value(for: right) ? 1 : 0
+        case let .equals(left: left, right: right, destination: destination):
+            memory[destination] = value(for: left) == value(for: right) ? 1 : 0
         }
 
-        if running {
+        if running && !didJump {
             instructionPointer += op.numberOfValues
         }
     }
@@ -88,6 +103,14 @@ enum IntcodeOperator {
     case input(destination: MemoryAddress)
     /// write value from source to the output
     case output(source: Parameter)
+    /// jump to newInstructionPointer if compare is non-zero
+    case jumpIfTrue(compare: Parameter, newInstructionPointer: Parameter)
+    /// jump to newInstructionPointer if compare is zero
+    case jumpIfFalse(compare: Parameter, newInstructionPointer: Parameter)
+    /// if left < right, write 1 to destination, else write 0
+    case lessThan(left: Parameter, right: Parameter, destination: MemoryAddress)
+    /// if left == right, write 1 to destination, else write 0
+    case equals(left: Parameter, right: Parameter, destination: MemoryAddress)
     /// Stop running
     case halt
 
@@ -115,6 +138,20 @@ enum IntcodeOperator {
             self = .input(destination: memoryIterator.next()!)
         case 4:
             self = .output(source: Parameter(memoryIterator.next()!, mode: p1Mode))
+        case 5:
+            self = .jumpIfTrue(compare: Parameter(memoryIterator.next()!, mode: p1Mode),
+                               newInstructionPointer: Parameter(memoryIterator.next()!, mode: p2Mode))
+        case 6:
+            self = .jumpIfFalse(compare: Parameter(memoryIterator.next()!, mode: p1Mode),
+                                newInstructionPointer: Parameter(memoryIterator.next()!, mode: p2Mode))
+        case 7:
+            self = .lessThan(left: Parameter(memoryIterator.next()!, mode: p1Mode),
+                             right: Parameter(memoryIterator.next()!, mode: p2Mode),
+                             destination: memoryIterator.next()!)
+        case 8:
+            self = .equals(left: Parameter(memoryIterator.next()!, mode: p1Mode),
+                           right: Parameter(memoryIterator.next()!, mode: p2Mode),
+                           destination: memoryIterator.next()!)
         case 99:
             self = .halt
         default:
@@ -126,6 +163,8 @@ enum IntcodeOperator {
         switch self {
         case .add, .multiply: return 4
         case .input, .output: return 2
+        case .jumpIfTrue, .jumpIfFalse: return 3
+        case .lessThan, .equals: return 4
         case .halt: return 1
         }
     }
