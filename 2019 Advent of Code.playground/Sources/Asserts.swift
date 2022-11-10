@@ -25,10 +25,10 @@ public func assertEqual<T>(_ expression1: @autoclosure () throws -> T?,
     }
 }
 
-public func verify<T, U>(_ testData: [(T, U)], _ closure: (T) -> U) -> Bool where U: Equatable {
+public func verify<T, U>(_ testData: [(T, U)], _ closure: (T) throws -> U) rethrows -> Bool where U: Equatable {
     var succeeded = true
     for (input, expected) in testData {
-        let actual = closure(input)
+        let actual = try closure(input)
         print(".", terminator: "")
         succeeded = succeeded && assertEqual(actual, expected)
     }
