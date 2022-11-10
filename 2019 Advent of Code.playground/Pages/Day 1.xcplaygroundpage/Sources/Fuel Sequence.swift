@@ -1,17 +1,9 @@
 import Foundation
 
-public struct FuelSequence: Sequence {
-    private let initialMass: Int
-    public init(_ mass: Int) {
-        self.initialMass = mass
-    }
-
-    public func makeIterator() -> AnyIterator<Int> {
-        var currentMass = initialMass
-
-        return AnyIterator {
-            currentMass = (currentMass / 3) - 2
-            return currentMass > 0 ? currentMass : nil
-        }
+public func fuelSequence(_ mass: Int) -> some Sequence<Int> {
+    // sequence(first: next:) and sequence(state: next:) look great, hope I remember them
+    return sequence(state: mass) { mass in
+        mass = (mass / 3) - 2
+        return mass > 0 ? mass : nil
     }
 }

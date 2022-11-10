@@ -59,7 +59,7 @@ verify([
  */
 
 func part2(_ masses: [Int]) -> Int {
-    return masses.lazy.flatMap(FuelSequence.init).reduce(0, +)
+    return masses.lazy.flatMap(fuelSequence).reduce(0, +)
 }
 
 verify([
