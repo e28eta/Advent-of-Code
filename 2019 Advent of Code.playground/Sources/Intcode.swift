@@ -2,7 +2,7 @@ import Foundation
 
 public struct IntcodeComputer {
     public private(set) var running: Bool
-    public private(set) var programCounter: Int
+    public private(set) var instructionPointer: Int
 
     public private(set) var memory: [Int]
 
@@ -12,7 +12,7 @@ public struct IntcodeComputer {
 
     public init<S: Sequence<Int>>(_ initial: S) {
         self.running = true
-        self.programCounter = 0
+        self.instructionPointer = 0
         self.memory = Array(initial)
     }
 
@@ -23,7 +23,7 @@ public struct IntcodeComputer {
     }
 
     public mutating func step() throws {
-        let op = try IntcodeOperator(memory[programCounter...])
+        let op = try IntcodeOperator(memory[instructionPointer...])
 
         switch op {
         case let .add(left: left, right: right, destination: destination):
@@ -35,7 +35,7 @@ public struct IntcodeComputer {
         }
 
         if running {
-            incrementProgramCounter()
+            instructionPointer += op.numberOfValues
         }
     }
 
@@ -43,8 +43,16 @@ public struct IntcodeComputer {
         modifications(&self.memory)
     }
 
-    private mutating func incrementProgramCounter() {
-        programCounter += 4
+    public mutating func set(noun: Int, verb: Int) {
+        precondition((0...99).contains(noun))
+        precondition((0...99).contains(verb))
+
+        memory[1] = noun
+        memory[2] = verb
+    }
+
+    public func read(_ address: Int) -> Int {
+        return memory[address]
     }
 }
 
@@ -66,6 +74,13 @@ enum IntcodeOperator {
             self = .halt
         default:
             fatalError("invalid opCode \(String(describing: opCode))")
+        }
+    }
+
+    var numberOfValues: Int {
+        switch self {
+        case .add, .multiply: return 4
+        case .halt: return 1
         }
     }
 }
