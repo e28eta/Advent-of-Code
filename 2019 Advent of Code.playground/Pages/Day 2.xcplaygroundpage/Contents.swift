@@ -109,6 +109,24 @@ try verify([
 
 let initialState = IntcodeComputer(input)
 
+try verify([
+    ((70, 14), 19690720)
+]) {
+    var computer = initialState
+    computer.set(noun: $0.0, verb: $0.1)
+    try computer.run()
+    return computer.read(0)
+}
 
+// answer is 7014. Here's how I found it, with noun/verb iteration swapped for speed
+
+let (verb, noun) = try CartesianProduct(0..<100, 0..<100).first { verb, noun in
+    var computer = initialState
+    computer.set(noun: noun, verb: verb)
+    try computer.run()
+    return computer.read(0) == 19690720
+} ?? (-1, -1)
+
+print(noun * 100 + verb)
 
 //: [Next](@next)
