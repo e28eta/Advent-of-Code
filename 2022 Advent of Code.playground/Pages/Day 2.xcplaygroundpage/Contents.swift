@@ -48,7 +48,7 @@ C Z
 enum RPS {
     case rock, paper, scissors
 
-    init?<S: StringProtocol>(_ s: S) {
+    init?(_ s: some StringProtocol) {
         switch s {
         case "A": self = .rock
         case "B": self = .paper
@@ -91,7 +91,7 @@ enum Result {
         }
     }
 
-    init?<S: StringProtocol>(_ s: S) {
+    init?(_ s: some StringProtocol) {
         switch s {
         case "X": self = .lose
         case "Y": self = .draw
@@ -130,7 +130,7 @@ struct RPSRound {
     let result: Result
     let play: RPS
 
-    init?<S: StringProtocol>(part1 string: S) {
+    init?(part1 string: some StringProtocol) {
         let moves = string.split(separator: " ")
         guard moves.count == 2,
               let opponent = RPS(moves[0]),
@@ -139,7 +139,7 @@ struct RPSRound {
         self.play = play
     }
 
-    init?<S: StringProtocol>(part2 string: S) {
+    init?(part2 string: some StringProtocol) {
         let moves = string.split(separator: " ")
         guard moves.count == 2,
               let opponent = RPS(moves[0]),
