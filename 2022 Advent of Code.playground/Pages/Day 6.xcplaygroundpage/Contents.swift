@@ -37,33 +37,43 @@ import Foundation
  **How many characters need to be processed before the first start-of-packet marker is detected?**
  */
 
-struct WindowOf4: Sequence {
+struct LetterFrequencies: Sequence {
     let string: String
+    let windowSize: Int
 
-    init(_ s: String) {
-        string = s
+    init(_ string: String, windowSize: Int) {
+        self.string = string
+        self.windowSize = windowSize
     }
 
-    func makeIterator() -> AnyIterator<(Character, Character, Character, Character, Int)> {
-        var iterator = string.enumerated().makeIterator()
+    func makeIterator() -> some IteratorProtocol<(NSCountedSet, Int)> {
+        guard string.count >= windowSize else {
+            // not big enough
+            return AnyIterator { return nil }
+        }
 
-        var first = iterator.next().map(\.element)
-        var second = iterator.next().map(\.element)
-        var third = iterator.next().map(\.element)
-        var fourth = iterator.next()
+        var countedSet = NSCountedSet(array: Array(string.prefix(windowSize)))
+        var iterator = zip(string, string.enumerated().dropFirst(windowSize)).makeIterator()
+        var first = true
 
         return AnyIterator {
-            defer {
-                first = second
-                second = third
-                third = fourth?.element
-                fourth = iterator.next()
+            guard first == false else {
+                first = false
+                return (countedSet, windowSize)
             }
+            guard let (removed, next) = iterator.next() else { return nil }
 
-            guard let first, let second, let third, let fourth else { return nil }
+            countedSet.remove(removed)
+            countedSet.add(next.element)
 
-            return (first, second, third, fourth.element, fourth.offset + 1)
+            return (countedSet, next.offset + 1)
         }
+    }
+
+    func firstCompletelyUniqueWindow() -> Int? {
+        return self.first { (countedSet, _) in
+            countedSet.count == windowSize
+        }.map(\.1)
     }
 }
 
@@ -77,9 +87,36 @@ verify([
     ("zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw", 11),
     (input, 1876)
 ]) { input in
-    return WindowOf4(input).first { (a, b, c, d, n) in
-        Set(arrayLiteral: a, b, c, d).count == 4
-    }.map(\.4) ?? 0
+    LetterFrequencies(input, windowSize: 4).firstCompletelyUniqueWindow()
+}
+
+/**
+ --- Part Two ---
+
+ Your device's communication system is correctly detecting packets, but still isn't working. It looks like it also needs to look for **messages.**
+
+ A **start-of-message marker** is just like a start-of-packet marker, except it consists of **14 distinct characters** rather than 4.
+
+ Here are the first positions of start-of-message markers for all of the above examples:
+
+ - `mjqjpqmgbljsphdztnvjfqwrcgsmlb`: first marker after character `19`
+ - `bvwbjplbgvbhsrlpgdmjqwftvncz`: first marker after character `23`
+ - `nppdvjthqldpwncqszvftbrmjlhg`: first marker after character `23`
+ - `nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg`: first marker after character `29`
+ - `zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw`: first marker after character `26`
+
+ **How many characters need to be processed before the first start-of-message marker is detected?**
+ */
+
+verify([
+    ("mjqjpqmgbljsphdztnvjfqwrcgsmlb", 19),
+    ("bvwbjplbgvbhsrlpgdmjqwftvncz", 23),
+    ("nppdvjthqldpwncqszvftbrmjlhg", 23),
+    ("nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg", 29),
+    ("zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw", 26),
+    (input, 2202)
+]) { input in
+    LetterFrequencies(input, windowSize: 14).firstCompletelyUniqueWindow()
 }
 
 //: [Next](@next)
