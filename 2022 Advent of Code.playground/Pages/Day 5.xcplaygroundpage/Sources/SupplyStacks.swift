@@ -73,15 +73,18 @@ public struct SupplyStacks {
         }
     }
 
-    public mutating func apply(_ instruction: Instruction) {
+    public mutating func apply(_ instruction: Instruction, reversingCrates: Bool = true) {
         guard stacks[instruction.source] != nil,
               stacks[instruction.destination] != nil else {
             return
         }
 
-        let moved = stacks[instruction.source]!.suffix(instruction.count)
+        var moved: any Sequence<Crate> = stacks[instruction.source]!.suffix(instruction.count)
+        if (reversingCrates) {
+            moved = moved.reversed()
+        }
         stacks[instruction.source]!.removeLast(instruction.count)
-        stacks[instruction.destination]!.append(contentsOf: moved.reversed())
+        stacks[instruction.destination]!.append(contentsOf: moved)
     }
 
     public var topCrates: String {
