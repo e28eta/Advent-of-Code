@@ -28,7 +28,7 @@ enum DirectoryEntry {
     }
 }
 
-class Directory {
+public class Directory {
     let name: String
     var parent: Directory? = nil
     var contents: [DirectoryEntry]? = nil {
@@ -52,7 +52,7 @@ class Directory {
         return nil
     }
 
-    func size() -> Int {
+    public func size() -> Int {
         if let calculatedSize {
             return calculatedSize
         }
@@ -86,7 +86,7 @@ enum InputLine {
 }
 
 public struct FileSystem {
-    let head: Directory
+    public let head: Directory
     var currentDirectory: Directory
     var allDirectories: [Directory] = []
 
@@ -142,6 +142,18 @@ public struct FileSystem {
             .map { $0.size() }
             .filter { $0 <= 100_000 }
             .reduce(0, +)
+    }
+
+    public func part2() -> Int {
+        let currentFreeSpace = 70_000_000 - head.size()
+        let neededFreeSpace = 30_000_000 - currentFreeSpace
+
+        return allDirectories
+            .map { $0.size() }
+            .sorted(by: <)
+            .first {
+                $0 > neededFreeSpace
+            } ?? -1
     }
 }
 
