@@ -55,31 +55,48 @@ public struct Point: CustomStringConvertible, Hashable {
             x += 1
         }
     }
+
+    mutating func step(_ other: Point) {
+        let distanceToOther = manhattanDistance(to: other)
+        guard distanceToOther > 2 || (distanceToOther == 2 && isSameRowOrCol(other)) else { return }
+
+        // this takes 2 steps (a diagonal step) if neither x nor y are equal
+        // this only takes one step if we're in the same row or column
+        // other cases shouldn't happen due to other logic
+
+        if x < other.x {
+            x += 1
+        } else if x > other.x {
+            x -= 1
+        }
+
+        if y < other.y {
+            y += 1
+        } else if y > other.y {
+            y -= 1
+        }
+    }
 }
 
 public struct Rope {
-    var headPosition = Point(x: 0, y: 0)
-    var tailPosition = Point(x: 0, y: 0)
+    var positions: Array<Point>
     var allTailPositions = Set<Point>()
 
-    public init() {
-        allTailPositions.insert(tailPosition)
+    public init(length: Int = 2) {
+        precondition(length >= 2)
+
+        positions = Array(repeating: Point(x: 0, y: 0), count: length)
+        allTailPositions.insert(positions.last!)
     }
 
     public mutating func apply(_ instruction: Instruction) {
         for _ in (0..<instruction.distance) {
-            let oldHead = headPosition
-            headPosition.step(instruction.direction)
+            positions[0].step(instruction.direction)
 
-            let newDistanceBetween = headPosition.manhattanDistance(to: tailPosition)
-
-            // if I never step more than 1, I think these are the only two conditions that
-            // cause tail to move, and tail will always move to the spot head just left
-            if (newDistanceBetween == 3) ||
-                (newDistanceBetween == 2 && headPosition.isSameRowOrCol(tailPosition)) {
-                tailPosition = oldHead
-                allTailPositions.insert(tailPosition)
+            for idx in positions.indices.dropFirst() {
+                positions[idx].step(positions[idx - 1])
             }
+            allTailPositions.insert(positions.last!)
         }
     }
 
