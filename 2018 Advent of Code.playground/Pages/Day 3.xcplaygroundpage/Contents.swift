@@ -122,5 +122,5 @@ verify(testData2, partTwo)
 
 let nonConflicting = fabric.nonConflictingClaims
 assertEqual(nonConflicting.count, 1)
-assertEqual(nonConflicting.first, "1260"
+assertEqual(nonConflicting.first, "1260")
 
