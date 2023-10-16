@@ -24,11 +24,30 @@ public enum Instruction: CustomStringConvertible {
     }
 }
 
+public enum Pixel: CustomStringConvertible {
+    case dark, lit
+
+    public var description: String {
+        switch self {
+        case .dark:
+            return "."
+        case .lit:
+            return "#"
+        }
+    }
+}
+
 public struct CPU {
     public private(set) var register: Int = 1
     public private(set) var cycle: Int = 1
 
-    public init() {}
+    private var scheduledAddition: (cycle: Int, value: Int)?
+
+    private var instructions: any IteratorProtocol<Instruction>
+
+    public init(instructions: some IteratorProtocol<Instruction>) {
+        self.instructions = instructions
+    }
 
     public mutating func apply(instruction: Instruction) {
         switch instruction {
@@ -38,6 +57,36 @@ public struct CPU {
             cycle += 2
             register += value
         }
+    }
+
+    public mutating func tick() -> Pixel {
+        // begin
+        // check to see if we need a new instruction
+        if scheduledAddition == nil,
+           // read next instruction
+           let nextInstruction = instructions.next(),
+           // handle addx
+           case .addx(let value) = nextInstruction {
+            scheduledAddition = (cycle: cycle + 1, value: value)
+        } // else continue previous addx, or noop
+
+        // draw
+        let currentPixelIndex = ((cycle - 1) % CRT.columnCount)
+        let spriteLocation = (register-1)...(register+1)
+        
+        let pixel: Pixel = (spriteLocation.contains(currentPixelIndex)
+                            ? .lit
+                            : .dark)
+
+
+        // end
+        if scheduledAddition?.cycle == cycle {
+            register += scheduledAddition!.value
+            scheduledAddition = nil
+        }
+        cycle += 1
+
+        return pixel
     }
 }
 
@@ -49,6 +98,23 @@ public struct Program {
     }
 }
 
+public struct CRT: CustomStringConvertible {
+    static let columnCount = 40
+    public let pixels: [ArraySlice<Pixel>]
+
+    public init?(pixels: [Pixel]) {
+        guard pixels.count == 240 else { return nil }
+
+        self.pixels = pixels.sliced(into: CRT.columnCount)
+    }
+
+    public var description: String {
+        return pixels.map { row in
+            row.map(\.description).joined(separator: "")
+        }.joined(separator: "\n")
+    }
+}
+
 public class HandheldDevice {
     let program: Program
 
@@ -57,7 +123,7 @@ public class HandheldDevice {
     }
 
     public func part1() -> Int {
-        var cpu = CPU()
+        var cpu = CPU(instructions: program.instructions.makeIterator())
 
         // just save them all, and then search for simplicty
         let registerValues: [(Int, Int)] = program.instructions.map { instruction in
@@ -87,5 +153,15 @@ public class HandheldDevice {
         
         let targetIndex = values.index(before: nextIndex)
         return values[targetIndex].1
+    }
+
+    public func part2() -> CRT? {
+        var cpu = CPU(instructions: program.instructions.makeIterator())
+
+        let pixels = (0..<240).map { _ in
+            cpu.tick()
+        }
+
+        return CRT(pixels: pixels)
     }
 }
