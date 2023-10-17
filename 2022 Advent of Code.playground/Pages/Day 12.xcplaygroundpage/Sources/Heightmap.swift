@@ -39,18 +39,6 @@ enum GridSquare: CustomStringConvertible, Equatable {
     }
 }
 
-//extension GridSquare: Strideable {
-//    typealias Stride = Int
-//
-//    func distance(to other: GridSquare) -> Int {
-//        heightValue.distance(to: other.heightValue)
-//    }
-//
-//    func advanced(by n: Int) -> GridSquare {
-//        return .elevation(Character(UnicodeScalar(heightValue + n)!))
-//    }
-//}
-
 public struct Heightmap {
     let heightGrid: Grid<GridSquare>
     public let location: GridIndex
@@ -100,8 +88,8 @@ extension Heightmap: SearchState {
         return location.manhattanDistance(to: goal.location)
     }
 
-    public func adjacentStates() -> AnySequence<Step> {
-        let adjacentStates = heightGrid.neighbors(of: location)
+    public func adjacentStates() -> any Sequence<Step> {
+        return heightGrid.neighbors(of: location)
             .filter { neighborLocation in
                 // ensure elevation isn't too high
                 heightGrid[location].heightValue + 1 >= heightGrid[neighborLocation].heightValue
@@ -111,7 +99,5 @@ extension Heightmap: SearchState {
                  state: Heightmap(heightGrid: heightGrid,
                                   location: neighborLocation))
             }
-
-        return AnySequence(adjacentStates)
     }
 }

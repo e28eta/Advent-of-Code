@@ -65,4 +65,5 @@ verify([
     return AStarSearch(initial: map, goal: map.goalState())
         .shortestPath()?.cost ?? -1
 }
+
 //: [Next](@next)
