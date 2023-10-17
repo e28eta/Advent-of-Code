@@ -6,16 +6,27 @@ public typealias Item = Int
 
 public class MonkeyBusiness {
     let debug = false
-    var monkeys: [Monkey]
+    public private(set) var monkeys: [Monkey]
     var roundNumber = 1
+    let worryLevelManagementFactor: Int
 
     public init(_ string: String) {
         monkeys = string.matches(of: Monkey.MatchingRegex).map(Monkey.init)
+
+        worryLevelManagementFactor = lcm(monkeys.map(\.test.testValue))
     }
 
     public func part1() -> Int {
-        for _ in 0 ..< 20 {
-            round()
+        return calculate(numRounds: 20, scaleByOneThird: true)
+    }
+
+    public func part2() -> Int {
+        return calculate(numRounds: 10_000, scaleByOneThird: false)
+    }
+
+    func calculate(numRounds: Int, scaleByOneThird: Bool) -> Int {
+        for _ in (0 ..< numRounds) {
+            round(scaleByOneThird: scaleByOneThird)
         }
 
         let counts = inspectionCounts()
@@ -29,12 +40,14 @@ public class MonkeyBusiness {
         return counts.sorted().suffix(2).reduce(1, *)
     }
 
-    func round() {
+    func round(scaleByOneThird: Bool) {
         for idx in monkeys.indices {
-            turn(idx)
+            turn(idx, scaleByOneThird: scaleByOneThird)
         }
 
-        if debug && (roundNumber < 10 || roundNumber % 5 == 0 ) {
+        if debug &&
+            ((scaleByOneThird && (roundNumber < 10 || roundNumber % 5 == 0 ))
+             || (roundNumber % 1_000 == 0)) {
             print("After round \(roundNumber), the monkeys are holding items with these worry levels:")
             for monkey in monkeys {
                 print("Monkey \(monkey.id):", monkey.items)
@@ -45,12 +58,15 @@ public class MonkeyBusiness {
         roundNumber += 1
     }
 
-    func turn(_ idx: Int) {
+    func turn(_ idx: Int, scaleByOneThird: Bool) {
         let currentMonkey = monkeys[idx]
 
         for var item in currentMonkey.items {
             item = currentMonkey.operation(item)
-            item /= 3
+            if (scaleByOneThird) {
+                item /= 3
+            }
+            item %= worryLevelManagementFactor
             let destination = currentMonkey.test(item)
             monkeys[destination].items.append(item)
         }
