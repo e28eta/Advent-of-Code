@@ -60,6 +60,7 @@ public struct Heightmap {
     var start: GridIndex {
         heightGrid.firstIndex { .start == $0 }!
     }
+
     var goal: GridIndex {
         heightGrid.firstIndex { .end == $0 }!
     }
@@ -73,8 +74,7 @@ extension Heightmap: Hashable {
     }
 
     public func hash(into hasher: inout Hasher) {
-        hasher.combine(location.row)
-        hasher.combine(location.col)
+        hasher.combine(location)
     }
 }
 
@@ -90,9 +90,9 @@ extension Heightmap: SearchState {
 
     public func adjacentStates() -> any Sequence<Step> {
         return heightGrid.neighbors(of: location)
-            .filter { neighborLocation in
-                // ensure elevation isn't too high
-                heightGrid[location].heightValue + 1 >= heightGrid[neighborLocation].heightValue
+            .filter { destinationLocation in
+                // "elevation of the destination square can be at most one higher than the elevation of your current square"
+                heightGrid[location].heightValue + 1 >= heightGrid[destinationLocation].heightValue
             }
             .map { neighborLocation in
                 (cost: 1,
@@ -101,3 +101,37 @@ extension Heightmap: SearchState {
             }
     }
 }
+
+extension Heightmap: DijkstraGraph {
+    public func allVertices() -> any Sequence<GridIndex> {
+        return heightGrid.indices
+    }
+
+    public func neighbors(of location: GridIndex) -> any Sequence<(Int, GridIndex)> {
+        return heightGrid.neighbors(of: location)
+            .filter { startingLocation in
+                // "elevation of the destination square can be at most one higher than the elevation of your current square"
+                // ensure elevation isn't too low. For djikstra, search descends
+                heightGrid[startingLocation].heightValue + 1 >= heightGrid[location].heightValue
+            }
+            .map {
+                (1, $0)
+            }
+    }
+
+    public func part2() -> Int? {
+        let dijkstra = Dijkstra(graph: self, initialVertex: goal)
+
+        return heightGrid
+            .indices
+            .filter { idx in
+                // find all squares with same height as start square
+                heightGrid[idx].heightValue == GridSquare.start.heightValue
+            }.map { idx in
+                // convert them to their costs
+                dijkstra.cost[idx]!
+            }
+            .min() // and find the shortest
+    }
+}
+

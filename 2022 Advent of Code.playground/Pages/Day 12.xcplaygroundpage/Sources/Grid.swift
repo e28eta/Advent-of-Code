@@ -68,6 +68,13 @@ public struct GridIndex: Strideable, CustomDebugStringConvertible {
     }
 }
 
+extension GridIndex: Hashable {
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(row)
+        hasher.combine(col)
+    }
+}
+
 public struct Grid<E>: RandomAccessCollection, MutableCollection {
     public enum NeighborConnectivity { case fourWay, eightWay }
 

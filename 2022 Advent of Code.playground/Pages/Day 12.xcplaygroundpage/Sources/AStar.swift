@@ -12,6 +12,7 @@ public protocol SearchState: Hashable {
     /// computation, but semi-accurate causes the search to perform better.
     ///
     /// Must *always* be the same value for any pair of states, cannot subsequently refine.
+    /// Must under-estimate the cost to reach the goal
     func estimatedCost(toReach goal: Self) -> Cost
 
     /// Provide a sequence (possibly lazily computed) of every adjacent step from this state, and the cost
@@ -98,7 +99,7 @@ public class AStarSearch<State: SearchState> where State.Cost: Comparable {
     /**
      All (non-looping) paths that lead to the goal state, lazily computed
      */
-    public func allPaths() -> some Sequence<SearchResult> {
+    func allPaths() -> some Sequence<SearchResult> {
         return AnySequence<SearchResult> {
             // per a* algorithm definitions
             let openList = BinaryHeap<Step>()

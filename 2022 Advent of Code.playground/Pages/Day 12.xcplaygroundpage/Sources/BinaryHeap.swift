@@ -89,6 +89,10 @@ public class BinaryHeap<Element: Comparable & AnyObject & CustomStringConvertibl
     }
 
     public func pop() -> Element? {
+        // danj 10/17/23: I'm not positive the GetMinimum & RemoveMinimum
+        // are guaranteed to be the same object. Seems like it has been,
+        // and thinking about likely implementation it should be, but the
+        // docs don't say it will be
         guard let result = CFBinaryHeapGetMinimum(heap) else {
             return nil
         }
