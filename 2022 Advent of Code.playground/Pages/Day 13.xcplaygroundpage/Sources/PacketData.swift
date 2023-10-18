@@ -1,6 +1,6 @@
 import Foundation
 
-public enum PacketData {
+public enum PacketData: Comparable {
     indirect case list([PacketData])
     case int(Int)
 
@@ -31,7 +31,7 @@ public enum PacketData {
             fatalError("unexpected error thrown \(error)")
         }
 
-        fatalError("left and right were the same?")
+        return false // packets are equal
     }
 
     // I _think_ throwing a result when found leads to "cleaner" code in this
@@ -63,19 +63,15 @@ public enum PacketData {
     }
 }
 
-public func parseInput(_ string: String) -> [(PacketData, PacketData)] {
-    return string.components(separatedBy: "\n\n")
-        .map { pairOfLines in
-            let pairOfLists = pairOfLines.trimmingCharacters(in: .whitespacesAndNewlines)
-                .lines()
-                .compactMap { line in
-                    line.data(using: .utf8)
-                }
-                .compactMap { data in
-                    try? JSONSerialization.jsonObject(with: data)
-                }
-                .compactMap(PacketData.init)
-
-            return (pairOfLists[0], pairOfLists[1])
+public func parseInput(_ string: String) -> [PacketData] {
+    return string.lines()
+        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        .filter { !$0.isEmpty }
+        .compactMap { line in
+            line.data(using: .utf8)
         }
+        .compactMap { data in
+            try? JSONSerialization.jsonObject(with: data)
+        }
+        .compactMap(PacketData.init)
 }
