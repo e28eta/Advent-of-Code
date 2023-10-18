@@ -59,17 +59,36 @@ public struct Cave {
                 }
         }
 
+        let lastRow = grid.contents.endIndex -  1
+        for colIdx in grid.contents[lastRow].indices {
+            grid.contents[lastRow][colIdx] = .rock
+        }
+
         self.grid = grid
         self.bounds = bounds
     }
 
-    public mutating func fillWithSand() -> Int {
-        for grain in (0...) {
+    public mutating func part1() -> Int {
+        for grain in (1...) {
             let destination = dropSand(from: source)
             grid[destination] = .sand
 
-            // fell into the abyss
-            if destination.row == (grid.height - 1) {
+            // fell onto the floor, don't count this one
+            if destination.row == (grid.height - 2) {
+                return grain - 1
+            }
+        }
+
+        return -1
+    }
+
+    public mutating func part2() -> Int {
+        for grain in (1...) {
+            let destination = dropSand(from: source)
+            grid[destination] = .sand
+
+            // fell into the source of the sand
+            if destination == bounds.sourceIndex() {
                 return grain
             }
         }
@@ -165,10 +184,14 @@ struct CaveBounds {
             bounds.maxY = max(point.y, bounds.maxY)
         }
 
-        // Add some room for the abyss
-        result.minX -= 1
-        result.maxX += 1
-        result.maxY += 1
+        // room for the floor
+        result.maxY += 2
+        
+        // room for horizontal expansion
+        let maxSandHeight = (result.maxY - source.y)
+
+        result.minX = min(result.minX, source.x - maxSandHeight)
+        result.maxX = max(result.maxX, source.x + maxSandHeight)
 
         return result
     }
