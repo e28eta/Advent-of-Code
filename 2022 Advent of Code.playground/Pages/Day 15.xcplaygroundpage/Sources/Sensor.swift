@@ -18,6 +18,34 @@ public func part1(_ string: String, y: Int) -> Int {
     return positionsCovered.count
 }
 
+public func part2(_ string: String, bounds: ClosedRange<Int>) -> Int {
+    let sensors = Sensor.sensors(from: string)
+
+    // same approach as part1, just brute forcing every row?
+    // cleaned up my memory usage (not a set of each column), since
+    // there's only supposed to be one result.
+    // Almost sad that brute force worked for me, some good solutions
+    // on reddit: like brute force checking only squares +1 past detection range,
+    // or the fact it'll be the single square in the middle of a 4-way
+    // intersection of the edges of detection
+    for y in bounds {
+        let sortedRanges = sensors
+            .compactMap { sensor in sensor.coverageOf(y: y) }
+            .sorted(using: KeyPathComparator(\.lowerBound))
+
+        var x = bounds.lowerBound
+        for coverage in sortedRanges {
+            if x + 1 < coverage.lowerBound && bounds.contains(coverage.lowerBound) {
+                // gap in coverage!
+                return (x + 1) * 4_000_000 + y
+            }
+            x = max(x, coverage.upperBound)
+        }
+    }
+
+    return 0
+}
+
 public struct Sensor {
     public let location: Point
     public let closestBeacon: Point
