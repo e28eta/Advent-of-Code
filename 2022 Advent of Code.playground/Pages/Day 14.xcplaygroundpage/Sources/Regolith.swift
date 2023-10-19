@@ -130,7 +130,9 @@ public struct Point: CustomStringConvertible {
         y = Int(components[1])!
     }
     public var description: String { return "(\(x), \(y))" }
+}
 
+extension Point {
     static func points(along path: [Point]) -> [Point] {
         return zip(path, path.dropFirst())
             .flatMap { (first, second) in
