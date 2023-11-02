@@ -32,72 +32,76 @@ public struct Volcano {
         return calculated
     }
 
-    struct SearchState {
-        /// valve (un-opened) where I'm currently standing
-        let currentValve: String
-        /// valves that haven't been opened yet
-        let remaining: Set<String>
-        /// current pressure relieved along this path
-        var pressureRelieved: Int
-        /// time remaining along this path
-        var timeRemaining: Int
-
-        /// track pressure of unopened valves to prune branches when
-        /// they couldn't possibly make a difference
-        var pendingPressure: Int
-    }
-
     public func calculateBestPressureRelief() -> Int {
         var bestPressure = 0
-        var searchStateQueue = [
-            SearchState(currentValve: startingLocation,
-                        remaining: Set(valuableValves.keys).subtracting([startingLocation]),
-                        pressureRelieved: 0,
-                        timeRemaining: 30,
-                        pendingPressure: valuableValves.reduce(0, { $0 + $1.value }))
-        ]
+        let timeLimit = 30
 
-        while !searchStateQueue.isEmpty {
-            var currentState = searchStateQueue.removeFirst()
-
-            if let value = valuableValves[currentState.currentValve], value > 0 {
-                // open this valve & count its value.
-                // Expected for every valve except possibly the starting one
-                currentState.timeRemaining -= 1
-                currentState.pressureRelieved += currentState.timeRemaining * value
-                currentState.pendingPressure -= value
-
-                bestPressure = max(currentState.pressureRelieved, bestPressure)
-            }
-
-            // check every remaining valuable valve
-            for nextValve in currentState.remaining {
-                let pathCost = cost(from: currentState.currentValve, to: nextValve)
-                let remainingTime = currentState.timeRemaining - pathCost
-
-                // Verify there's enough time for this to be worth traveling to
-                // +2: one to open valve, one to count some pressure
-                guard remainingTime >= 2 else {
-                    continue
-                }
-
-                let upperBoundValue = (remainingTime - 2) * currentState.pendingPressure
-                guard currentState.pressureRelieved + upperBoundValue > bestPressure else {
-                    // not enough time + pressure remaining to make this worth pursuing
-                    // Wow! This check saves a bunch of runtime
-                    continue
-                }
-
-                searchStateQueue.append(
-                    SearchState(currentValve: nextValve,
-                                remaining: currentState.remaining.subtracting([nextValve]),
-                                pressureRelieved: currentState.pressureRelieved,
-                                timeRemaining: remainingTime,
-                                pendingPressure: currentState.pendingPressure))
-            }
+        allFeasiblePaths(timeLimit: timeLimit) { path in
+            bestPressure = max(bestPressure, path.pressureRelieved(startTime: timeLimit))
         }
 
         return bestPressure
+    }
+
+    public func calculateBestPressureWithElephantsHelp() -> Int {
+        var bestPressures: [Set<String>: Int] = [:]
+        let timeLimit = 26
+
+        allFeasiblePaths(timeLimit: 26) { path in
+            let pathComponents = Set(path.valves)
+
+            bestPressures[pathComponents] = max(bestPressures[pathComponents, default: 0], path.pressureRelieved(startTime: timeLimit))
+        }
+
+        var combinedPressures = 0
+        for combo in bestPressures.combinations(ofCount: 2) {
+            let (left, right) = (combo[0], combo[1])
+            if left.key.isDisjoint(with: right.key) {
+                combinedPressures = max(combinedPressures, left.value + right.value)
+            }
+        }
+
+        return combinedPressures
+    }
+
+    struct AllPathsState {
+        var currentValve: String
+        var path: ValvePathSegment
+
+        var remainingValves: Set<String>
+    }
+
+    func allFeasiblePaths(timeLimit: Int, _ visit: (ValvePathSegment) -> ()) {
+
+        var searchStateQueue = [
+            // both starting locations are worth 0 flow, simplifies
+            AllPathsState(currentValve: startingLocation,
+                          path: ValvePathSegment(),
+                          remainingValves: Set(valuableValves.keys))
+        ]
+
+        while !searchStateQueue.isEmpty {
+            let currentState = searchStateQueue.removeLast()
+
+            // check every remaining valuable valve
+            for nextValve in currentState.remainingValves {
+                let nextPath = currentState.path.adding(valve: nextValve,
+                                                        cost: cost(from: currentState.currentValve, to: nextValve),
+                                                        rate: valuableValves[nextValve, default: 0])
+
+                if nextPath.timeRequired > timeLimit {
+                    continue
+                }
+
+                visit(nextPath)
+
+                searchStateQueue.append(
+                    AllPathsState(currentValve: nextValve,
+                                  path: nextPath,
+                                  remainingValves: currentState.remainingValves.subtracting([nextValve]))
+                )
+            }
+        }
     }
 }
 
@@ -131,6 +135,75 @@ public struct ValveGraph: DijkstraGraph {
 
     public func neighbors(of valve: String) -> any Sequence<(Int, String)> {
         return (edges[valve] ?? []).map { (1, $0) }
+    }
+}
+
+public struct ValvePathSegment {
+    /// valves that make up this path segment
+    var valves: [String]
+
+    /// amount of time required to traverse this segment and open the valves
+    /// since getting to first segment takes varying time, this is time to open first valve,
+    /// travel to next valve, open that valve, etc
+    var timeRequired: Int
+
+    /**
+     Pressure relieved along this path is linear along time remaining when the valves
+     are opened.
+
+     pressure(t) = t * (sum of rates)
+     - (time spent to open first * rate of first)
+     - (time spent to open first & second * rate of second)
+     - (time spent to open first through third * rate of third)
+
+     Only valid when `t >= timeRequired`.
+     If `(t * sum of rates)` was really large, might make sense to re-write as
+     `(t - timeRequired) * (sum of rates) + <constant...>`
+     */
+    struct PressureEquation {
+        /// multiplicative factor against time when segment started
+        var multiplier: Int
+        /// constant factor, stored as negative number
+        var constant: Int
+    }
+    var pressureEquation: PressureEquation
+
+    init() {
+        // empty path, for initial state
+        self.valves = []
+        self.timeRequired = 0
+        self.pressureEquation = PressureEquation(multiplier: 0, constant: 0)
+    }
+
+    /// amount of pressure relieved traversing this segment starting at `startTime`
+    func pressureRelieved(startTime: Int) -> Int {
+        // handle this case by having shorter path segments
+        guard startTime >= timeRequired else { return 0 }
+
+        return pressureEquation.multiplier * startTime + pressureEquation.constant
+    }
+
+    func adding(valve: String, cost: Int, rate: Int) -> ValvePathSegment {
+        var newSegment = self
+
+        newSegment.valves.append(valve)
+        newSegment.timeRequired += cost + 1
+        newSegment.pressureEquation.multiplier += rate
+        newSegment.pressureEquation.constant -= newSegment.timeRequired * rate
+
+        return newSegment
+    }
+}
+
+extension ValvePathSegment: CustomStringConvertible {
+    public var description: String {
+        return valves.joined(separator: " -> ") + " (\(timeRequired)): \(pressureEquation)"
+    }
+}
+
+extension ValvePathSegment.PressureEquation: CustomStringConvertible {
+    public var description: String {
+        return "v(t) = t * \(multiplier) - \(constant * -1)"
     }
 }
 
