@@ -353,8 +353,27 @@ verify([
     (input, 3081)
 ]) {
     var chamber = Chamber()
-    return chamber.part1(wind: WindDirection.windPattern($0))
+    return chamber.drop(2022, wind: WindDirection.windPattern($0))
 }
 
+/**
+ # --- Part Two ---
+
+ The elephants are not impressed by your simulation. They demand to know how tall the tower will be after `1000000000000` rocks have stopped! Only then will they feel confident enough to proceed through the cave.
+
+ In the example above, the tower would be `1514285714288` units tall!
+
+  **How tall will the tower be after 1000000000000 rocks have stopped?**
+ */
+
+
+verify([
+    (testInput, 1514285714288),
+    (input, 1524637681145)
+]) {
+    let dropCount = 1000000000000
+    var chamber = Chamber()
+    return chamber.drop(dropCount, wind: WindDirection.windPattern($0))
+}
 
 //: [Next](@next)
