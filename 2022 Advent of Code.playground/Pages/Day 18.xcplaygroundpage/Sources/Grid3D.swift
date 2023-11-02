@@ -42,6 +42,18 @@ public struct Coordinate3D: CustomStringConvertible {
     }
 }
 
+extension Coordinate3D: Hashable {
+    public static func == (lhs: Coordinate3D, rhs: Coordinate3D) -> Bool {
+        return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(x)
+        hasher.combine(y)
+        hasher.combine(z)
+    }
+}
+
 public struct Grid3DIndex: Strideable, CustomStringConvertible {
     let xRange: Range<Int>
     let yRange: Range<Int>
@@ -193,6 +205,12 @@ public struct Grid3D<E>: RandomAccessCollection, MutableCollection {
         get {
             return index(x: x, y: y, z: z).map { contents[$0.index] }
         }
+    }
+
+    public func neighbors(of index: Index) -> [Index] {
+        let coordinate = index.coordinate
+
+        return coordinate.neighbors().compactMap(index(coordinate:))
     }
 }
 
