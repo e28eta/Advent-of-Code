@@ -25,12 +25,20 @@ public func assertEqual<T>(_ expression1: @autoclosure () throws -> T?,
     }
 }
 
-public func verify<T, U>(_ testData: [(T, U)], _ closure: (T) -> U) -> Bool where U: Equatable {
+public func verify<T, U>(_ testData: [(T, U)],
+                         measure: Bool = false,
+                         _ closure: (T) -> U) -> Bool where U: Equatable {
+    let clock = ContinuousClock()
     var succeeded = true
     for (input, expected) in testData {
-        let actual = closure(input)
-        print(".", terminator: "")
-        succeeded = succeeded && assertEqual(actual, expected)
+        let elapsed = clock.measure {
+            let actual = closure(input)
+            print(".", terminator: "")
+            succeeded = succeeded && assertEqual(actual, expected)
+        }
+        if measure {
+            print(" in \(elapsed)")
+        }
     }
     print()
     return succeeded
