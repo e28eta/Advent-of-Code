@@ -1,11 +1,12 @@
 import Foundation
 
 enum Job {
+    case unknown
     case literal(Int)
     case evaluate(Operator, Monkey.Identifier, Monkey.Identifier)
 
     enum Operator {
-        case add, subtract, multiply, divide
+        case add, subtract, multiply, divide, equality
     }
 }
 
@@ -17,11 +18,10 @@ public struct Monkey {
 }
 
 public struct MonkeyTroop {
+    public static let RootId = "root"
+    static let HumanId = "humn"
     /// identifier to Monkey object
-    let monkeys: [Monkey.Identifier: Monkey]
-
-    /// identifier to already-computed value, if the calc has been done
-    var monkeyValue: [Monkey.Identifier: Int] = [:]
+    var monkeys: [Monkey.Identifier: Monkey]
 
     public init(_ string: String) {
         let monkeyArray = string.lines().compactMap(Monkey.init)
@@ -31,26 +31,40 @@ public struct MonkeyTroop {
         }
     }
 
-    mutating public func value(for monkeyId: Monkey.Identifier) -> Int {
-        if let value = monkeyValue[monkeyId] {
-            return value
+    mutating public func fixMistranslation() {
+        guard let previousRoot = monkeys[MonkeyTroop.RootId],
+              case let .evaluate(_, leftRoot, rightRoot) = previousRoot.job else {
+            fatalError("root missing or Job isn't to evaluate")
         }
 
+        monkeys[MonkeyTroop.RootId] = Monkey(identifier: MonkeyTroop.RootId,
+                                             job: .evaluate(.equality, leftRoot, rightRoot))
+        monkeys[MonkeyTroop.HumanId] = Monkey(identifier: MonkeyTroop.HumanId,
+                                              job: .unknown)
+    }
+
+    public func value(for monkeyId: Monkey.Identifier) -> Int {
+        guard case .value(let value) = result(for: monkeyId) else {
+            fatalError("result was not a value!")
+        }
+
+        return value
+    }
+
+    func result(for monkeyId: Monkey.Identifier) -> Job.Operator.Result {
         guard let monkey = monkeys[monkeyId] else {
             fatalError("Unknown monkey \(monkeyId)")
         }
 
-        let result: Int
         switch monkey.job {
+        case .unknown:
+            return .unknown({ $0 })
         case .literal(let value):
-            result = value
+            return .value(value)
         case let .evaluate(op, leftId, rightId):
-            result = op(value(for: leftId),
-                        value(for: rightId))
+            return op(result(for: leftId),
+                      result(for: rightId))
         }
-
-        monkeyValue[monkeyId] = result
-        return result
     }
 }
 
@@ -98,12 +112,69 @@ extension Job.Operator {
         }
     }
 
-    func callAsFunction(_ left: Int, _ right: Int) -> Int {
-        switch self {
-        case .add: return left + right
-        case .subtract: return left - right
-        case .multiply: return left * right
-        case .divide: return left / right
+    enum Result {
+        /// function result is fully specified
+        case value(Int)
+
+        /// Result has `humn` in it. Build a function that takes the desired result
+        /// and returns the value that `humn` should resolve to
+        case unknown((Int) -> Int)
+    }
+
+    func callAsFunction(_ left: Result, _ right: Result) -> Result {
+        switch (self, left, right) {
+        case (_, .unknown, .unknown):
+            fatalError("should never have two unknown results in the tree")
+        case let (.add, .value(left), .value(right)):
+            return .value(left + right)
+        case let (.add, .value(value), .unknown(fx)),
+            let (.add, .unknown(fx), .value(value)):
+            // result = value + unknown
+            return .unknown({ result in
+                fx(result - value)
+            })
+
+        case let (.subtract, .value(left), .value(right)):
+            return .value(left - right)
+        case let (.subtract, .value(value), .unknown(fx)):
+            // result = value - unknown
+            return .unknown({ result in
+                fx(value - result)
+            })
+        case let (.subtract, .unknown(fx), .value(value)):
+            // result = unknown - value
+            return .unknown({ result in
+                fx(result + value)
+            })
+
+        case let (.multiply, .value(left), .value(right)):
+            return .value(left * right)
+        case let (.multiply, .value(value), .unknown(fx)),
+            let (.multiply, .unknown(fx), .value(value)):
+            // result = value * unknown
+            return .unknown({ result in
+                fx(result / value)
+            })
+
+        case let (.divide, .value(left), .value(right)):
+            return .value(left / right)
+        case let (.divide, .value(value), .unknown(fx)):
+            // result = value / unknown
+            return .unknown({ result in
+                fx(value / result)
+            })
+        case let (.divide, .unknown(fx), .value(value)):
+            // result = unknown / value
+            return .unknown({ result in
+                fx(result * value)
+            })
+
+        case let (.equality, .unknown(fx), .value(value)),
+            let (.equality, .value(value), .unknown(fx)):
+            // we can solve!
+            return .value(fx(value))
+        case (.equality, .value, .value):
+            fatalError("equality should not have two values")
         }
     }
 }
