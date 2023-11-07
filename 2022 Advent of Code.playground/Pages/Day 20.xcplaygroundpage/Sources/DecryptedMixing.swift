@@ -9,7 +9,7 @@ public struct EncryptionNumber {
 }
 
 public class DecryptedMixing {
-    public var list: LinkedList<EncryptionNumber>
+    private var list: LinkedList<EncryptionNumber>
 
     public init(_ string: String) {
         let numbers = string.lines()
@@ -22,7 +22,7 @@ public class DecryptedMixing {
         list = LinkedList(numbers)
     }
 
-    public func part1() -> Int {
+    public func mix() {
         for original in (0 ..< list.count) {
             // this search could be faster if I start partway through
             let currentIndex = list.firstIndex { $0.originalPosition == original }!
@@ -35,7 +35,9 @@ public class DecryptedMixing {
                                         delta: delta)
             list.insert(moved, at: destination)
         }
+    }
 
+    public func groveCoordinates() -> Int {
         let zeroIndex = list.firstIndex { $0.value == 0 }!
 
         return [1000, 2000, 3000].reduce(0) { (sum, delta) in
@@ -44,6 +46,17 @@ public class DecryptedMixing {
 
             return sum + value
         }
+    }
+
+    /**
+     For part 2, multiply each number by the decryption key
+     */
+    public func decrypt() {
+        let decryptionKey = 811589153
+        list = LinkedList(list.map {
+            EncryptionNumber(originalPosition: $0.originalPosition,
+                             value: $0.value * decryptionKey)
+        })
     }
 
     private func indexFrom(start index: LinkedList<EncryptionNumber>.Index, delta: Int) -> LinkedList<EncryptionNumber>.Index {
