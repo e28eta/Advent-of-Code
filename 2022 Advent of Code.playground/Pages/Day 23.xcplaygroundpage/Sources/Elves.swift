@@ -74,34 +74,7 @@ public struct ElfGroup {
 
     public mutating func part1() -> Int {
         for roundNum in 0 ..< 10 {
-            let directions = Direction.allCases.rotated(shiftingToStart: roundNum % Direction.allCases.count)
-
-            let candidateDirections = elfLocations.reduce(into: [Point: [Point]]()) { (destinations, location) in
-                var targetLocation = location
-
-                if location.adjacent().contains(where: elfLocations.contains) {
-                    // at least one adjacent square contains an elf
-                    // find a valid direction to move in
-
-                    if let direction = directions.first(where: {
-                        elfLocations.isDisjoint(with: location.adjacent(in: $0))
-                    }) {
-                        targetLocation = location + direction
-                    }
-                }
-
-                destinations[targetLocation, default: []].append(location)
-            }
-
-            elfLocations = candidateDirections.reduce(into: Set()) { set, targetAndSources in
-                if targetAndSources.value.count == 1 {
-                    // only one elf wants to move here
-                    set.insert(targetAndSources.key)
-                } else {
-                    // more than one elf wanted to move into the same spot, they stay put
-                    set.formUnion(targetAndSources.value)
-                }
-            }
+            _ = calculate(roundNum: roundNum)
         }
 
         let xRange = elfLocations.map(\.x).minAndMax()!
@@ -112,4 +85,48 @@ public struct ElfGroup {
                 * (1 + yRange.max - yRange.min)
                 - elfLocations.count)
     }
+
+    public mutating func part2() -> Int {
+        return 1 + (0...).first { roundNum in
+            false == calculate(roundNum: roundNum)
+        }!
+    }
+
+    mutating func calculate(roundNum: Int) -> Bool {
+        var elfWantedToMove = false
+
+        let directions = Direction.allCases.rotated(shiftingToStart: roundNum % Direction.allCases.count)
+
+        let candidateDirections = elfLocations.reduce(into: [Point: [Point]]()) { (destinations, location) in
+            var targetLocation = location
+
+            if location.adjacent().contains(where: elfLocations.contains) {
+                elfWantedToMove = true
+                // at least one adjacent square contains an elf
+                // find a valid direction to move in
+
+                if let direction = directions.first(where: {
+                    elfLocations.isDisjoint(with: location.adjacent(in: $0))
+                }) {
+                    targetLocation = location + direction
+                }
+            }
+
+            destinations[targetLocation, default: []].append(location)
+        }
+
+        elfLocations = candidateDirections.reduce(into: Set()) { set, targetAndSources in
+            if targetAndSources.value.count == 1 {
+                // only one elf wants to move here
+                set.insert(targetAndSources.key)
+            } else {
+                // more than one elf wanted to move into the same spot, they stay put
+                set.formUnion(targetAndSources.value)
+            }
+        }
+
+        return elfWantedToMove
+    }
+
+
 }

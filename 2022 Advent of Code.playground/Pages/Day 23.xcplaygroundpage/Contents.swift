@@ -244,4 +244,37 @@ verify([
     return group.part1()
 }
 
+/**
+ # --- Part Two ---
+
+ It seems you're on the right track. Finish simulating the process and figure out where the Elves need to go. How many rounds did you save them?
+
+ In the example above, the **first round where no Elf moved** was round `20`:
+
+ ```
+ .......#......
+ ....#......#..
+ ..#.....#.....
+ ......#.......
+ ...#....#.#..#
+ #.............
+ ....#.....#...
+ ..#.....#.....
+ ....#.#....#..
+ .........#....
+ ....#......#..
+ .......#......
+ ```
+
+ Figure out where the Elves need to go. What is the number of the first round where no Elf moves?
+ */
+
+verify([
+    (testInput, 20),
+    (input, 908)
+]) {
+    var group = ElfGroup($0)
+    return group.part2()
+}
+
 //: [Next](@next)
