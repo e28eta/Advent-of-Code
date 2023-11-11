@@ -47,10 +47,10 @@ public struct Valley {
 
     public func fastestPath() -> Int {
         let startLocation = space.startIndex.advanced(by: 1)
-        let goalLocation = space.endIndex.advanced(by: -2).coordinate.withoutTime()
+        let goalLocations = [space.endIndex.advanced(by: -2).coordinate.withoutTime()]
 
-        let search = AStarSearch(initial: ValleySearchState(space: space, location: startLocation),
-                                 goal: goalLocation)
+        let search = AStarSearch(initial: ValleySearchState(space: space, location: startLocation, remainingGoals: goalLocations),
+                                 goal: .none)
 
         guard let (cost, _) = search.shortestPath() else {
             fatalError("no path found!")
@@ -58,18 +58,40 @@ public struct Valley {
 
         return cost
     }
+
+    public func fastestPathTwice() -> Int {
+        let startLocation = space.startIndex.advanced(by: 1)
+        let endLocation = space.endIndex.advanced(by: -2).coordinate.withoutTime()
+
+        let startState = ValleySearchState(space: space,
+                                           location: startLocation,
+                                           remainingGoals: [endLocation, startLocation.coordinate.withoutTime(), endLocation])
+
+        let search = AStarSearch(initial: startState, goal: .none)
+
+        return search.shortestPath()?.cost ?? -1
+    }
 }
 
 struct ValleySearchState {
     let space: Grid2DTime<Contents>
     let location: Grid2DTimeIndex
+
+    // elf forgot his snacks, running A* with intermediate stops
+    // by treating them as a sequence of goals
+    let remainingGoals: [Coordinate2D]
 }
 
 extension ValleySearchState: SearchState {
-    typealias Goal = Coordinate2D
+    // tracking progress toward goal inside the SearchState
+    typealias Goal = Optional<Never>
 
-    func estimatedCost(toReach goal: Coordinate2D) -> Int {
-        return location.coordinate.manhattanDistance(to: goal)
+    func estimatedCost(toReach goals: Goal) -> Int {
+        let paths = zip([location.coordinate.withoutTime()] + remainingGoals, remainingGoals)
+
+        return paths.reduce(0) { (sum, path) in
+            return sum + path.0.manhattanDistance(to: path.1)
+        }
     }
 
     func adjacentStates() -> any Sequence<Step> {
@@ -77,12 +99,28 @@ extension ValleySearchState: SearchState {
             .neighbors(of: location)
             .lazy
             .filter { space[$0] == .empty }
-            .map { ValleySearchState(space: space, location: $0) }
+            .map { location in
+                guard let nextGoal = remainingGoals.first else {
+                    fatalError("Finding adjacent states of a goal?")
+                }
+                if location.coordinate == nextGoal {
+                    // neighbor is the next goal, remove it from remaining
+                    return ValleySearchState(space: space,
+                                             location: location,
+                                             remainingGoals: Array(remainingGoals.dropFirst()))
+                } else {
+                    // neighbor is not the next goal, keep looking
+                    return ValleySearchState(space: space,
+                                             location: location,
+                                             remainingGoals: remainingGoals)
+                }
+            }
             .map { (cost: 1, state: $0) }
     }
 
-    func isGoal(_ goal: Coordinate2D) -> Bool {
-        return self.location.coordinate.manhattanDistance(to: goal) == 0
+    func isGoal(_ goal: Goal) -> Bool {
+        // hit all of the goals
+        return self.remainingGoals.isEmpty
     }
 }
 
@@ -166,9 +204,10 @@ extension ValleySearchState: Hashable {
 
     func hash(into hasher: inout Hasher) {
         hasher.combine(location.coordinate)
+        hasher.combine(remainingGoals)
     }
 
     static func ==(_ lhs: Self, _ rhs: Self) -> Bool {
-        return lhs.location == rhs.location
+        return lhs.location == rhs.location && lhs.remainingGoals == rhs.remainingGoals
     }
 }

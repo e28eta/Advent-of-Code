@@ -1,11 +1,15 @@
 import Foundation
 
-public struct Coordinate2D: Equatable {
+public struct Coordinate2D: Hashable {
     let x: Int, y: Int
 
     public init(x: Int, y: Int) {
         self.x = x
         self.y = y
+    }
+
+    public func manhattanDistance(to other: Coordinate2D) -> Int {
+        return abs(x - other.x) + abs(y - other.y)
     }
 }
 
@@ -34,16 +38,16 @@ public struct Coordinate2DTime: CustomStringConvertible, Hashable {
         }
     }
 
-    public func manhattanDistance(to other: Coordinate2D) -> Int {
-        return abs(x - other.x) + abs(y - other.y)
-    }
-
     public func withoutTime() -> Coordinate2D {
         return Coordinate2D(x: x, y: y)
     }
 
     public var description: String {
         return "(\(x),\(y),\(t))"
+    }
+
+    static func ==(_ lhs: Coordinate2DTime, _ rhs: Coordinate2D) -> Bool {
+        return lhs.x == rhs.x && lhs.y == rhs.y
     }
 }
 
