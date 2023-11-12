@@ -81,7 +81,7 @@ public struct LanternfishSchool {
         originalCounts = counts
     }
 
-    public func part1() -> Int {
+    public func count(after targetDay: Int) -> Int {
         var counts = originalCounts
         let modulus = counts.count
 
@@ -89,7 +89,7 @@ public struct LanternfishSchool {
         var newbieDay = 8
         var adultDay = 6
 
-        for _ in (0 ..< 80) {
+        for _ in (0 ..< targetDay) {
             currentDay = mod(currentDay + 1, modulus)
             newbieDay = mod(newbieDay + 1, modulus)
             adultDay = mod(adultDay + 1, modulus)
@@ -105,7 +105,24 @@ verify([
     (testInput, 5934),
     (input, 345387),
 ]) {
-    LanternfishSchool($0).part1()
+    LanternfishSchool($0).count(after: 80)
+}
+
+/**
+ # --- Part Two ---
+
+ Suppose the lanternfish live forever and have unlimited food and space. Would they take over the entire ocean?
+
+ After 256 days in the example above, there would be a total of 26984457539 lanternfish!
+
+ How many lanternfish would there be after 256 days?
+ */
+
+verify([
+    (testInput, 26984457539),
+    (input, 1574445493136),
+]) {
+    LanternfishSchool($0).count(after: 256)
 }
 
 //: [Next](@next)
