@@ -29,23 +29,43 @@ public enum Command {
 }
 
 public struct Position {
-    var horizontal = 0
-    var depth = 0
-
     public init() {}
 
-    public mutating func after(_ command: Command) {
-        switch command {
-        case .forward(let amount):
-            horizontal += amount
-        case .down(let amount):
-            depth += amount
-        case .up(let amount):
-            depth -= amount
+    public func part1(_ commands: [Command]) -> Int {
+        var horizontal = 0
+        var depth = 0
+
+        for command in commands {
+            switch command {
+            case .forward(let amount):
+                horizontal += amount
+            case .down(let amount):
+                depth += amount
+            case .up(let amount):
+                depth -= amount
+            }
         }
+
+        return horizontal * depth
     }
 
-    public func part1() -> Int {
+    public func part2(_ commands: [Command]) -> Int {
+        var horizontal = 0
+        var depth = 0
+        var aim = 0
+
+        for command in commands {
+            switch command {
+            case .forward(let amount):
+                horizontal += amount
+                depth += (aim * amount)
+            case .down(let amount):
+                aim += amount
+            case .up(let amount):
+                aim -= amount
+            }
+        }
+
         return horizontal * depth
     }
 }
