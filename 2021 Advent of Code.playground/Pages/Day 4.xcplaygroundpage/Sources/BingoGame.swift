@@ -58,8 +58,8 @@ public struct BingoBoard {
 }
 
 public struct BingoGame {
-    var pickedNumbers: [Int]
-    var boards: [BingoBoard]
+    let pickedNumbers: [Int]
+    let boards: [BingoBoard]
 
     public init?(_ string: String) {
         var lines = string.lines()
@@ -81,15 +81,50 @@ public struct BingoGame {
         }
     }
 
-    public mutating func play() -> Int {
-        for next in pickedNumbers {
-            for boardIdx in boards.indices {
-                if boards[boardIdx].mark(next) {
-                    return next * boards[boardIdx].score()
+    public func firstWinningScore() -> Int {
+        var iter = boardScoresInWinningOrder().makeIterator()
+        return iter.next() ?? -1
+    }
+
+    public func lastWinningScore() -> Int {
+        return boardScoresInWinningOrder().reversed().first ?? -1
+    }
+
+    func boardScoresInWinningOrder() -> some Sequence<Int> {
+        return AnySequence<Int> {
+            var numberIdx = pickedNumbers.startIndex
+            var remainingBoards = boards
+            var remainingBoardIdx = remainingBoards.startIndex
+
+            return AnyIterator<Int> {
+                // keep going until all numbers are checked or all boards have won
+                // this sequence won't return a board that never wins
+                while numberIdx < pickedNumbers.endIndex
+                        && !remainingBoards.isEmpty {
+                    let boardDidWin = remainingBoards[remainingBoardIdx].mark(pickedNumbers[numberIdx])
+
+                    defer {
+                        // if we've checked this number for all boards,
+                        // move to the next number & top of the board list
+                        if remainingBoardIdx == remainingBoards.endIndex {
+                            remainingBoardIdx = remainingBoards.startIndex
+                            numberIdx += 1
+                        }
+                    }
+
+                    if boardDidWin {
+                        // shifts all remaining boards down, no need to increment idx
+                        let winningBoard = remainingBoards.remove(at: remainingBoardIdx)
+
+                        return winningBoard.score() * pickedNumbers[numberIdx]
+                    } else {
+                        // move to the next board
+                        remainingBoardIdx += 1
+                    }
                 }
+
+                return nil
             }
         }
-
-        return -1
     }
 }
