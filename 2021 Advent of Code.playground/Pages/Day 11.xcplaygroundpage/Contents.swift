@@ -327,7 +327,7 @@ let testInput = """
 let input = try readResourceFile("input.txt")
 
 public struct OctopiGrid {
-    let grid: Grid<Int>
+    var grid: Grid<Int>
 
     public init(_ string: String) {
         let heights = string.lines().map { line in
@@ -337,44 +337,51 @@ public struct OctopiGrid {
         grid = Grid(heights, connectivity: GridConnectivity.eightWay)
     }
 
-    public func part1() -> Int {
-        var grid = self.grid
-        var flashCount = 0
+    public mutating func part1() -> Int {
+        return (0 ..< 100).reduce(0) { (flashCount, _) in
+            flashCount + step()
+        }
+    }
 
-        for _ in 0 ..< 100 {
-            // all octopi who've been added to needToFlash
-            var flashingOctopi: Set<GridIndex> = []
-            // remaining octopi who still need to increment their neighbors
-            var needToFlash: [GridIndex] = []
+    mutating func step() -> Int {
+        // all octopi who've been added to needToFlash
+        var flashingOctopi: Set<GridIndex> = []
+        // remaining octopi who still need to increment their neighbors
+        var needToFlash: [GridIndex] = []
 
-            for idx in grid.indices {
-                grid[idx] += 1
+        for idx in grid.indices {
+            grid[idx] += 1
 
-                if grid[idx] > 9 {
-                    flashingOctopi.insert(idx)
-                    needToFlash.append(idx)
-                }
+            if grid[idx] > 9 {
+                flashingOctopi.insert(idx)
+                needToFlash.append(idx)
             }
-
-            while let nextFlash = needToFlash.popLast() {
-                for neighbor in grid.neighbors(of: nextFlash) {
-                    grid[neighbor] += 1
-
-                    if grid[neighbor] > 9 && !flashingOctopi.contains(neighbor) {
-                        flashingOctopi.insert(neighbor)
-                        needToFlash.append(neighbor)
-                    }
-                }
-            }
-
-            for idx in flashingOctopi {
-                grid[idx] = 0
-            }
-
-            flashCount += flashingOctopi.count
         }
 
-        return flashCount
+        while let nextFlash = needToFlash.popLast() {
+            for neighbor in grid.neighbors(of: nextFlash) {
+                grid[neighbor] += 1
+
+                if grid[neighbor] > 9 && !flashingOctopi.contains(neighbor) {
+                    flashingOctopi.insert(neighbor)
+                    needToFlash.append(neighbor)
+                }
+            }
+        }
+
+        for idx in flashingOctopi {
+            grid[idx] = 0
+        }
+
+        return flashingOctopi.count
+    }
+
+    mutating func part2() -> Int {
+        let octopusCount = grid.count
+
+        return (1 ... 1_000_000).first { stepNum in
+            step() == octopusCount
+        } ?? -1
     }
 }
 
@@ -382,7 +389,64 @@ verify([
     (testInput, 1656),
     (input, 1571)
 ]) {
-    OctopiGrid($0).part1()
+    var g = OctopiGrid($0)
+    return g.part1()
+}
+
+/**
+ # --- Part Two ---
+
+ It seems like the individual flashes aren't bright enough to navigate. However, you might have a better option: the flashes seem to be **synchronizing!**
+
+ In the example above, the first time all octopuses flash simultaneously is step `195`:
+
+ ```
+ After step 193:
+ 5877777777
+ 8877777777
+ 7777777777
+ 7777777777
+ 7777777777
+ 7777777777
+ 7777777777
+ 7777777777
+ 7777777777
+ 7777777777
+
+ After step 194:
+ 6988888888
+ 9988888888
+ 8888888888
+ 8888888888
+ 8888888888
+ 8888888888
+ 8888888888
+ 8888888888
+ 8888888888
+ 8888888888
+
+ After step 195:
+ 0000000000
+ 0000000000
+ 0000000000
+ 0000000000
+ 0000000000
+ 0000000000
+ 0000000000
+ 0000000000
+ 0000000000
+ 0000000000
+ ```
+
+ If you can calculate the exact moments when the octopuses will all flash simultaneously, you should be able to navigate through the cavern. **What is the first step during which all octopuses flash?**
+ */
+
+verify([
+    (testInput, 195),
+    (input, 387)
+]) {
+    var g = OctopiGrid($0)
+    return g.part2()
 }
 
 //: [Next](@next)
