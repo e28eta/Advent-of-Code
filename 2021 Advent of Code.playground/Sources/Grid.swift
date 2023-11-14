@@ -93,8 +93,8 @@ public struct Grid<E>: RandomAccessCollection, MutableCollection {
     public typealias Index = GridIndex
 
     var contents: [[E]]
-    let width: Int
-    let height: Int
+    public let width: Int
+    public let height: Int
     let neighbors: [[Index]]
 
     public let startIndex: Index
@@ -132,6 +132,16 @@ public struct Grid<E>: RandomAccessCollection, MutableCollection {
         }
         set(newValue) {
             contents[position.row][position.col] = newValue
+        }
+    }
+
+    public subscript(_ row: Int, _ col: Int) -> E? {
+        get {
+            guard (0 ..< height).contains(row) && (0 ..< width).contains(col) else {
+                return nil
+            }
+            return GridIndex(width: width, row: row, col: col)
+                .map { idx in self[idx] }
         }
     }
 

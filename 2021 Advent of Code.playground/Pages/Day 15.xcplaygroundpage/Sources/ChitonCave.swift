@@ -2,8 +2,9 @@ import Foundation
 
 // class to make the reference to the grid cheap?
 
-public class ChitonCave {
+public struct ChitonCave {
     let grid: Grid<Int>
+    let expandedGrid: Grid<Int>
 
     public init(_ string: String) {
         let risks = string.lines().map {
@@ -11,22 +12,50 @@ public class ChitonCave {
         }
 
         grid = Grid(risks, connectivity: GridConnectivity.fourWay)
+
+        let gridHeight = grid.height
+        let gridWidth = grid.width
+
+        let newHeight = gridHeight * 5
+        let newWidth = gridWidth * 5
+
+        let expandedRisks: [[Int]] = (0 ..< newHeight).map { row in
+            let (rq, rr) = row.quotientAndRemainder(dividingBy: gridHeight)
+
+            return (0 ..< newWidth).map { col in
+                let (cq, cr) = col.quotientAndRemainder(dividingBy: gridWidth)
+
+                // increases by one for each repeated row/col, but range is [1,9]
+                return ((risks[rr][cr] + (rq + cq) - 1) % 9) + 1
+            }
+        }
+
+        expandedGrid = Grid(expandedRisks,
+                            connectivity: GridConnectivity.fourWay)
     }
 
-    public func leastRiskyPath() -> Int {
-        let start = CaveSearchState(cave: self, location: grid.startIndex)
-        let end = CaveSearchState(cave: self, location: grid.index(before: grid.endIndex))
+    public func leastRiskyPath(expanded: Bool = false) -> Int {
+        let gridToSearch = expanded ? expandedGrid : grid
 
-        let aStar = AStarSearch(initial: start,
-                                goal: end)
+        let start = CaveSearchState(grid: gridToSearch,
+                                    location: gridToSearch.startIndex)
+        let end = CaveSearchState(grid: gridToSearch,
+                                  location: gridToSearch.index(before: gridToSearch.endIndex))
+
+        let aStar = AStarSearch(initial: start, goal: end)
 
         return aStar.shortestPath()!.cost
     }
 }
 
-struct CaveSearchState: Hashable {
-    let cave: ChitonCave
+final class CaveSearchState: Hashable {
+    let grid: Grid<Int>
     let location: GridIndex
+
+    init(grid: Grid<Int>, location: GridIndex) {
+        self.grid = grid
+        self.location = location
+    }
 
     // assumes never comparing from different maps
     public static func ==(_ lhs: CaveSearchState, _ rhs: CaveSearchState) -> Bool {
@@ -39,18 +68,22 @@ struct CaveSearchState: Hashable {
 }
 
 extension CaveSearchState: SearchState {
-    typealias Goal = Self
-
-    func estimatedCost(toReach goal: Goal) -> Int {
+    func estimatedCost(toReach goal: CaveSearchState) -> Int {
         // if every square between was risk 1
         return location.manhattanDistance(to: goal.location)
     }
 
-    func adjacentStates() -> any Sequence<(cost: Int, state: Self)> {
-        return cave.grid.neighbors(of: location).map { idx in
+    func adjacentStates() -> any Sequence<(cost: Int, state: CaveSearchState)> {
+        return grid.neighbors(of: location).map { idx in
             // cost to enter idx is the value stored there
-            return (cost: cave.grid[idx],
-                    state: CaveSearchState(cave: cave, location: idx))
+            return (cost: grid[idx],
+                    state: CaveSearchState(grid: grid, location: idx))
         }
+    }
+}
+
+extension CaveSearchState: CustomStringConvertible {
+    var description: String {
+        return location.debugDescription
     }
 }

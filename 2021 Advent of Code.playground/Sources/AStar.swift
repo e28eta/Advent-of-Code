@@ -40,6 +40,7 @@ private class SearchStateStep<State: SearchState> {
     let parent: SearchStateStep<State>?
     let cost: State.Cost
     let totalCost: State.Cost
+    let estimatedCostToGoal: State.Cost
 
     init(state: State, goal: State.Goal, parent: SearchStateStep<State>? = nil, cost: State.Cost = 0) {
         self.state = state
@@ -47,24 +48,33 @@ private class SearchStateStep<State: SearchState> {
         self.parent = parent
         self.cost = cost
         self.totalCost = cost + (self.parent?.totalCost ?? 0)
+        self.estimatedCostToGoal = state.estimatedCost(toReach: goal)
     }
 
-    /// return sequence from goal to start state, following the parent references
+    /// returns sequence from current to start state, following the parent references
     func pathToInitial() -> some Sequence<SearchStateStep<State>> {
         sequence(first: self, next: \.parent)
     }
 }
 
-// required for storing into the BinaryHeap. Use
+// required for storing into the Heap
 extension SearchStateStep: Comparable where State.Cost: Comparable {
+    var priority: State.Cost {
+        return totalCost + estimatedCostToGoal
+    }
+
+    // comparison for Heap
     static func <(_ lhs: SearchStateStep<State>, _ rhs: SearchStateStep<State>) -> Bool {
         assert(lhs.goal == rhs.goal, "When comparing two SearchStateSteps, they must have the same goal")
+
         // using estimated cost for priority to pull off the heap
-        return lhs.totalCost + lhs.state.estimatedCost(toReach: lhs.goal) < rhs.totalCost + rhs.state.estimatedCost(toReach: rhs.goal)
+        return lhs.priority < rhs.priority
     }
 
     static func ==(_ lhs: SearchStateStep<State>, _ rhs: SearchStateStep<State>) -> Bool {
-        return lhs.state == rhs.state
+        // I don't think Heap should do this, and AStar should not either
+        print("WARNING: someone is checking equality of SearchStateStep")
+        return !(lhs < rhs) && !(rhs < lhs)
     }
 }
 
@@ -112,14 +122,15 @@ public class AStarSearch<State: SearchState> where State.Cost: Comparable {
     func allPaths() -> some Sequence<SearchResult> {
         return AnySequence<SearchResult> {
             // per a* algorithm definitions
-            let openList = BinaryHeap<Step>()
+            var openList = Heap<Step>()
             var closedList = Set<State>()
 
-            openList.push(Step(state: self.initial, goal: self.goal))
+            openList.insert(Step(state: self.initial, goal: self.goal))
 
             return AnyIterator<SearchResult> {
-                while let current = openList.pop() {
+                while let current = openList.popMin() {
                     if closedList.contains(current.state) {
+                        // we've already found a cheaper route
                         continue
                     }
 
@@ -138,7 +149,7 @@ public class AStarSearch<State: SearchState> where State.Cost: Comparable {
                                             parent: current,
                                             cost: adjacentState.cost)
 
-                            openList.push(step)
+                            openList.insert(step)
                         }
                     }
                 }
