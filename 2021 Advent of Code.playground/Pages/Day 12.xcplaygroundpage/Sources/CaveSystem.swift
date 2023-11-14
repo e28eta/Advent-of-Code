@@ -41,9 +41,10 @@ public struct CaveSystem {
     struct SearchState {
         let visitedSmallCaves: Set<String>
         let currentCave: String
+        let secondVisitAllowed: Bool
     }
 
-    public func allPathCount() -> Int {
+    public func allPathCount(allowSecondVisit: Bool = false) -> Int {
         guard let _ = caves[self.startCave],
               let _ = caves[self.endCave] else {
             fatalError("missing start or end cave")
@@ -51,16 +52,23 @@ public struct CaveSystem {
 
         var pathCount = 0
         var caveQueue = [SearchState(visitedSmallCaves: [startCave],
-                                     currentCave: startCave)]
+                                     currentCave: startCave,
+                                     secondVisitAllowed: allowSecondVisit)]
 
         while !caveQueue.isEmpty {
             let state = caveQueue.removeFirst()
 
             for neighbor in caves[state.currentCave]!.neighbors {
-                if state.visitedSmallCaves.contains(neighbor) {
-                    // already been there once
+                if neighbor == startCave {
+                    // never allowed to return to start
                     continue
                 }
+                
+                if state.visitedSmallCaves.contains(neighbor) && !state.secondVisitAllowed {
+                    // already been there too many times
+                    continue
+                }
+
                 if neighbor == endCave {
                     // found a path to endCave, keep looking for more
                     pathCount += 1
@@ -77,18 +85,22 @@ public struct CaveSystem {
 
 
 extension CaveSystem.SearchState {
-    init() {
-        currentCave = ""
-        visitedSmallCaves = []
-    }
-
     func visiting(_ cave: Cave) -> CaveSystem.SearchState {
+        var secondVisitAllowed = self.secondVisitAllowed
         var smallCaves = self.visitedSmallCaves
+
         if case .small = cave.type {
-            smallCaves.insert(cave.label)
+            if smallCaves.contains(cave.label) {
+                precondition(secondVisitAllowed, "disallowed 2nd visit")
+                // consumes the allowed second visit
+                secondVisitAllowed = false
+            } else {
+                smallCaves.insert(cave.label)
+            }
         }
 
         return CaveSystem.SearchState(visitedSmallCaves: smallCaves,
-                                      currentCave: cave.label)
+                                      currentCave: cave.label,
+                                      secondVisitAllowed: secondVisitAllowed)
     }
 }
