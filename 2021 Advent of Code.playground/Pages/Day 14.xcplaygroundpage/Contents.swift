@@ -135,6 +135,14 @@ struct Polymer {
     }
 
     public func part1() -> Int {
+        return run(steps: 10)
+    }
+
+    public func part2() -> Int {
+        return run(steps: 40)
+    }
+
+    func run(steps: Int) -> Int {
         let templatePairs = zip(template, template.dropFirst())
         var pairCounts: [Pair<Character>: Int]
         = templatePairs.reduce(into: [:]) { counts, chars in
@@ -148,7 +156,7 @@ struct Polymer {
             counts[char, default: 0] += 1
         }
 
-        for _ in (0 ..< 10) {
+        for _ in (0 ..< steps) {
             pairCounts = pairCounts.reduce(into: [:]) { newCounts, pair in
                 if let result = rules[pair.key] {
                     newCounts[result.0, default: 0] += pair.value
@@ -173,6 +181,23 @@ verify([
     (input, 2068)
 ]) {
     Polymer($0).part1()
+}
+
+/**
+ # --- Part Two ---
+
+ The resulting polymer isn't nearly strong enough to reinforce the submarine. You'll need to run more steps of the pair insertion process; a total of **40 steps** should do it.
+
+ In the above example, the most common element is `B` (occurring `2192039569602` times) and the least common element is `H` (occurring `3849876073` times); subtracting these produces `2188189693529`.
+
+ Apply **40** steps of pair insertion to the polymer template and find the most and least common elements in the result. **What do you get if you take the quantity of the most common element and subtract the quantity of the least common element?**
+ */
+
+verify([
+    (testInput, 2188189693529),
+    (input, 2158894777814)
+]) {
+    Polymer($0).part2()
 }
 
 //: [Next](@next)
