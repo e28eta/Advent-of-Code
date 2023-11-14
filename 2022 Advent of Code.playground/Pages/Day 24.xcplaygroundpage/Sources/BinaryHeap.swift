@@ -13,17 +13,18 @@ public class BinaryHeap<Element: Comparable & AnyObject & CustomStringConvertibl
             print("_compare", o1, o2)
         }
         
-        if o1 == o2 {
-            return .compareEqualTo
-        } else if o1 < o2 {
+        if o1 < o2 {
             return .compareLessThan
         } else if o1 > o2 {
             return .compareGreaterThan
         } else {
-            if debug {
-                print("ERROR: NOT totally ordered")
+            // heap priority values are the same, use pointer address
+            // for stable ordering
+            if p1 < p2 {
+                return .compareLessThan
+            } else {
+                return p1 > p2 ? .compareGreaterThan : .compareEqualTo
             }
-            return p1 < p2 ? .compareLessThan : .compareGreaterThan
         }
     }
 

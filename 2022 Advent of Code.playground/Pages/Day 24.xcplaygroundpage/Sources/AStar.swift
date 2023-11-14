@@ -55,7 +55,7 @@ private class SearchStateStep<State: SearchState> {
     }
 }
 
-// required for storing into the BinaryHeap. Use
+// required for storing into the BinaryHeap.
 extension SearchStateStep: Comparable where State.Cost: Comparable {
     static func <(_ lhs: SearchStateStep<State>, _ rhs: SearchStateStep<State>) -> Bool {
         assert(lhs.goal == rhs.goal, "When comparing two SearchStateSteps, they must have the same goal")
@@ -64,7 +64,8 @@ extension SearchStateStep: Comparable where State.Cost: Comparable {
     }
 
     static func ==(_ lhs: SearchStateStep<State>, _ rhs: SearchStateStep<State>) -> Bool {
-        return lhs.state == rhs.state
+        // comparable for SearchStateStep is related to priority _only_
+        return !(lhs < rhs) && !(lhs > rhs)
     }
 }
 
