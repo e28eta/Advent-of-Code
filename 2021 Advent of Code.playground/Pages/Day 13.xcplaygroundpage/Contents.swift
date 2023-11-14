@@ -205,7 +205,6 @@ public struct Transparency {
     }
 
     public func part1() -> Int {
-
         return Set(points.map({ folds[0].translate(point: $0) }))
             .count
     }
@@ -218,5 +217,40 @@ verify([
     let t = Transparency($0)
     return t?.part1() ?? -1
 }
+
+/**
+ # --- Part Two ---
+
+ Finish folding the transparent paper according to the instructions. The manual says the code is always **eight capital letters.**
+
+  **What code do you use to activate the infrared thermal imaging camera system?**
+ */
+
+extension Transparency {
+    public func part2() {
+        let finalPoints = folds.reduce(Set(points)) { points, fold in
+            return points.reduce(into: Set()) { s, p in
+                s.insert(fold.translate(point: p))
+            }
+        }
+
+        let maxX = finalPoints.map(\.x).max()!
+        let maxY = finalPoints.map(\.y).max()!
+
+        for y in (0...maxY) {
+            let line = (0...maxX).map { x in
+                finalPoints.contains(Point(x: x, y: y)) ? "#" : " "
+            }.joined()
+
+            print(line)
+        }
+    }
+}
+
+print("test output:")
+Transparency(testInput)?.part2() // a square (or capital O?)
+
+print("part2 output:")
+Transparency(input)?.part2() // ALREKFKU
 
 //: [Next](@next)
