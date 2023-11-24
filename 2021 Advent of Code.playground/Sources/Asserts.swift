@@ -25,7 +25,7 @@ public func assertEqual<T>(_ expression1: @autoclosure () throws -> T?,
     }
 }
 
-public func verify<T, U>(_ testData: [(T, U)],
+public func verify<T, U>(_ testData: some Sequence<(T, U)>,
                          measure: Bool = false,
                          _ closure: (T) -> U) -> Bool where U: Equatable {
     let clock = ContinuousClock()

@@ -117,7 +117,10 @@ public class AStarSearch<State: SearchState> where State.Cost: Comparable {
     }
 
     /**
-     All (non-looping) paths that lead to the goal state, lazily computed
+     All (non-looping) paths that lead to the goal state, lazily computed.
+
+     WARNING: this actually just finds N paths, where N is the number of nodes with
+     edges leading to the goal, and those paths are the shortest paths to _those_ nodes.
      */
     func allPaths() -> some Sequence<SearchResult> {
         return AnySequence<SearchResult> {
