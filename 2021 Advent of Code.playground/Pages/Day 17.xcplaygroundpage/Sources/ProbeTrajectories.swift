@@ -1,37 +1,15 @@
 import Foundation
 
-public func xValues(_ velocity: Int) -> some Sequence<Int> {
-    var velocity = velocity
-    return sequence(first: 0) { loc in
-        if velocity > 0 {
-            defer { velocity -= 1 }
-            return loc + velocity
-        } else if velocity == 0 {
-            return nil
-        } else {
-            defer { velocity += 1 }
-            return loc + velocity
-        }
-    }
-}
-
-public func validXVelocities(passingThrough range: ClosedRange<Int>) -> some Collection<Int> {
+public func validXVelocities(landingInside range: ClosedRange<Int>) -> some Collection<HorizontalVelocity> {
     precondition(range.lowerBound >= 0, "TODO")
 
     // very generous upperBound
     return (0...range.upperBound)
-        .filter { velocity in
-            xValues(velocity).contains { range.contains($0) }
+        .map {
+            HorizontalVelocity(initial: $0, limit: range.upperBound)
         }
-}
-
-public func xVelocities(stoppingIn range: ClosedRange<Int>) -> some Collection<Int> {
-    precondition(range.lowerBound >= 0, "TODO")
-
-    // very generous upperBound
-    return (0...range.upperBound)
         .filter { velocity in
-            range.contains(xValues(velocity).suffix(1)[0])
+            range.contains(velocity.xValues.last!)
         }
 }
 
@@ -45,39 +23,78 @@ public func validYVelocities(landingInside range: ClosedRange<Int>) -> some Coll
     // ignore it.
     // Otherwise, this is just brute force, ignoring off-by-one in
     // the safe direction
-    return (0 ... abs(range.lowerBound))
-        .map(VerticalVelocity.init)
+    return (range.lowerBound ... abs(range.lowerBound))
+        .map({ VerticalVelocity(initial: $0, limit: range.lowerBound) })
         .filter { velocity in
-            let bottomYValue = velocity.yValues(limitedTo: range.lowerBound).suffix(1)[0]
+            let bottomYValue = velocity.yValues.last!
             return range.contains(bottomYValue)
         }
+}
+
+public struct HorizontalVelocity {
+    public let initial: Int
+    public let xValues: [Int]
+    public let lastValueRepeats: Bool
+
+    public init(initial: Int, limit: Int) {
+        self.initial = initial
+
+        var velocity = initial
+        var xValues = [0]
+        var location = 0
+
+        repeat {
+            location += velocity
+
+            if location <= limit {
+                xValues.append(location)
+            } else {
+                // flew past limit
+                break
+            }
+
+            if velocity > 0 {
+                velocity -= 1
+            } else if velocity < 0 {
+                velocity += 1
+            }
+        } while velocity != 0 // next loc would be same
+
+        self.xValues = xValues
+        self.lastValueRepeats = (velocity == 0)
+    }
+
+    public func allXValues() -> AnySequence<Int> {
+        if lastValueRepeats {
+            return AnySequence(chain(xValues, xValues.suffix(1).cycled()))
+        } else {
+            return AnySequence(xValues)
+        }
+
+    }
 }
 
 public struct VerticalVelocity {
     public let initial: Int
     public let peak: Int
-    public let velocityFallingThroughZero: Int
+    public let yValues: [Int]
 
-    public init(initial: Int) {
+    public init(initial: Int, limit lowestBound: Int) {
         self.initial = initial
+
         // triangular number https://oeis.org/A000217
-        self.peak = (initial) * (initial + 1) / 2
-        // extrapolation from
-        self.velocityFallingThroughZero = -1 - initial
-    }
+        self.peak = initial > 0 ? (initial) * (initial + 1) / 2 : 0
 
-    public func yValues(limitedTo limit: Int) -> some Sequence<Int> {
         var velocity = initial
-
-        return sequence(first: 0) { loc in
+        self.yValues = Array(sequence(first: 0) { loc in
             let newLoc = loc + velocity
             velocity -= 1
             // fell out the bottom of the target area
-            if newLoc < limit && velocity < 0 {
+            if newLoc < lowestBound && velocity < 0 {
                 return nil
             } else {
                 return newLoc
             }
-        }
+        })
     }
 }
