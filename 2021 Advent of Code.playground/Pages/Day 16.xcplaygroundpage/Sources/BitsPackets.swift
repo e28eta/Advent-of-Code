@@ -55,13 +55,26 @@ public func hexToBinary(_ string: String) -> some Collection<Bit> {
 
 
 enum PacketType {
-    case literal// = 4
-    case op(Int)
+    case sum
+    case product
+    case minimum
+    case maximum
+    case literal
+    case greaterThan
+    case lessThan
+    case equalTo
 
     init(_ int: Int) {
         switch int {
+        case 0: self = .sum
+        case 1: self = .product
+        case 2: self = .minimum
+        case 3: self = .maximum
         case 4: self = .literal
-        default: self = .op(int)
+        case 5: self = .greaterThan
+        case 6: self = .lessThan
+        case 7: self = .equalTo
+        default: fatalError("unsupported PacketType \(int)")
         }
     }
 }
@@ -86,11 +99,15 @@ enum OperatorLength {
     }
 }
 
+enum PacketContent {
+    case value(Int)
+    case subpackets([Packet])
+}
+
 public struct Packet {
     let version: Int
     let type: PacketType
-    let length: OperatorLength?
-    let subpackets: [Packet]?
+    let content: PacketContent
 
     public static func parse(_ bits: inout ArraySlice<Bit>) -> Packet? {
         let version = bits.prefix(3).intValue()
@@ -99,39 +116,31 @@ public struct Packet {
         let type = PacketType(bits.prefix(3).intValue())
         bits = bits.dropFirst(3)
 
-        var operatorLength: OperatorLength?
-        var subpackets: [Packet]?
+        let content: PacketContent
+        if case .literal = type {
+            content = .value(readLiteral(&bits))
+        } else {
+            let operatorLength = OperatorLength(&bits)
 
-        switch type {
-        case .literal:
-            let val = readLiteral(&bits)
-
-            // p1 doesn't care about the contents
-            print("literal with value \(val)")
-
-            operatorLength = nil
-            subpackets = nil
-        case .op:
-            operatorLength = OperatorLength(&bits)
-
-            switch operatorLength! {
+            switch operatorLength {
             case .bits(let bitCount):
                 var slice = bits.prefix(bitCount)
                 bits = bits.dropFirst(bitCount)
 
-                subpackets = []
+                var subpackets: [Packet] = []
                 while !slice.isEmpty, let packet = parse(&slice) {
-                    subpackets!.append(packet)
+                    subpackets.append(packet)
                 }
+
+                content = .subpackets(subpackets)
             case .packets(let packetCount):
-                subpackets = (0 ..< packetCount).map { _ in parse(&bits)! }
+                content = .subpackets((0 ..< packetCount).map { _ in parse(&bits)! })
             }
         }
 
         return Packet(version: version,
                       type: type,
-                      length: operatorLength,
-                      subpackets: subpackets)
+                      content: content)
     }
 
     public static func readLiteral(_ bits: inout ArraySlice<Bit>) -> Int {
@@ -148,6 +157,42 @@ public struct Packet {
     }
 
     public func versionSum() -> Int {
-        return version + (subpackets?.reduce(0) { s, p in s + p.versionSum() } ?? 0)
+        if case .subpackets(let subpackets) = content {
+            return version + subpackets.reduce(0) { $0 + $1.versionSum() }
+        } else {
+            return version
+        }
+    }
+
+    public func value() -> Int {
+        switch content {
+        case .value(let value):
+            return value
+        case .subpackets(let packets):
+            switch type {
+            case .sum:
+                return packets.reduce(0) { $0 + $1.value() }
+            case .product:
+                return packets.reduce(1) { $0 * $1.value() }
+            case .minimum:
+                return packets.dropFirst()
+                    .reduce(packets.first!.value()) { v, p in
+                    return min(v, p.value())
+                }
+            case .maximum:
+                return packets.dropFirst()
+                    .reduce(packets.first!.value()) { v, p in
+                        return max(v, p.value())
+                    }
+            case .literal:
+                fatalError("packet with type literal but not content = .value")
+            case .greaterThan:
+                return packets[0].value() > packets[1].value() ? 1 : 0
+            case .lessThan:
+                return packets[0].value() < packets[1].value() ? 1 : 0
+            case .equalTo:
+                return packets[0].value() == packets[1].value() ? 1 : 0
+            }
+        }
     }
 }
