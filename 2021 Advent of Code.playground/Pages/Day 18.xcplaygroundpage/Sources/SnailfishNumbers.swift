@@ -27,6 +27,12 @@ public extension SnailfishNumber {
 //MARK: Reducing
 
 public extension SnailfishNumber {
+    func reduced() -> SnailfishNumber {
+        var result = self
+        result.reduce()
+        return result
+    }
+    
     mutating func reduce() {
         while self.reduceOnce() {
             continue
