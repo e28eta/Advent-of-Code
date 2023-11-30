@@ -2,6 +2,9 @@
 <Workspace
    version = "1.0">
    <FileRef
+      location = "group:2023 Advent of Code.playground">
+   </FileRef>
+   <FileRef
       location = "group:2022 Advent of Code.playground">
    </FileRef>
    <FileRef

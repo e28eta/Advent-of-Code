@@ -13,15 +13,15 @@ public func assertEqual<T>(_ expression1: @autoclosure () throws -> T?,
             print("assertEqual failed: \(value1 as T?) != \(value2 as T?)")
             // Can't use assertionFailure, those are elided in the playground
             preconditionFailure(message(),
-                                file: file,
-                                line: line)
+                file: file,
+                line: line)
         }
         return true
     } catch {
         print("assertEqual failed: Error thrown while calculating expression \(error)")
         preconditionFailure("Error thrown while calculating expression \(error)",
-                            file: file,
-                            line: line)
+            file: file,
+            line: line)
     }
 }
 
