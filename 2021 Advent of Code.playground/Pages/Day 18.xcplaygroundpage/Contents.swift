@@ -217,24 +217,6 @@ let testCases = [
 ]
 let input = try readResourceFile("input.txt")
 
-
-// this feels like a variant of a "balanced" binary tree
-// to "explode" a pair, need to be able to traverse up the tree to find left & rightmost
-// next numbers.
-// or.. pass references to them as we go down the tree.
-// when investigating left number, the next-right number is leftmost of the right side, or nil
-// when investigating right number, the next-left is rightmost of left side, or nil
-// keep ref to ancestor, so that mutations can be
-
-// recursive call is separate from top-level
-
-// addition just creates new root node
-// and then loop while reducing happens
-
-// numbers need to be mutable, change the subtree without changing full tree?
-// nah, just recreate numbers through the tree.
-
-
 let explodeTests = [
     ("[[[[[9,8],1],2],3],4]", "[[[[0,9],2],3],4]"),
     ("[7,[6,[5,[4,[3,2]]]]]", "[7,[6,[5,[7,0]]]]"),
