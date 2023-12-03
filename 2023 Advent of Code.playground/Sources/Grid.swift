@@ -149,6 +149,13 @@ public struct Grid<E>: RandomAccessCollection, MutableCollection {
         return neighbors[position.index]
     }
 
+    public func neighbors(row: Int, col: Int) -> [GridIndex] {
+        guard let position = GridIndex(width: width, row: row, col: col) else {
+            return []
+        }
+        return neighbors(of: position)
+    }
+
     public func neighborCount(position: Index, isIncluded predicate: (Index) -> Bool) -> Int {
         return neighbors[position.index].filter(predicate).count
     }
