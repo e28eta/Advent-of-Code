@@ -148,81 +148,37 @@ humidity-to-location map:
 """
 let input = try readResourceFile("input.txt")
 
-public struct FoodProductionPlan<I: FixedWidthInteger> {
-    let seeds: [I]
-    let stages: [FoodProductionMap<I>]
-
-    public func part1() -> I {
-        return seeds.map { seed in
-            stages.reduce(seed) { input, stage in
-                stage.map(input)
-            }
-        }
-        .min() ?? -1
-    }
-}
-
-public struct FoodProductionMap<I: FixedWidthInteger> {
-    struct Entry {
-        let sourceRange: ClosedRange<I>
-        let destinationStart: I
-    }
-
-    let name: String
-    let entries: [Entry]
-
-    func map(_ input: I) -> I {
-        guard let entry = entries.first(where: { $0.sourceRange.contains(input)
-        }) else { return input }
-
-        return input - entry.sourceRange.lowerBound + entry.destinationStart
-    }
-}
-
-public extension FoodProductionPlan {
-    init(_ string: String) {
-        let components = string.components(separatedBy: "\n\n")
-        guard let (prefix, seeds) = components.first?.splitOnce(separator: ": "),
-              prefix == "seeds"
-        else {
-            fatalError("bad input \(string)")
-        }
-
-        self.seeds = seeds.components(separatedBy: " ")
-            .compactMap(I.init)
-        self.stages = components.dropFirst(1)
-            .map(FoodProductionMap.init)
-    }
-}
-
-extension FoodProductionMap {
-    init(_ string: some StringProtocol) {
-        let lines = string.lines()
-
-        name = lines.first ?? "unknown"
-        entries = lines.dropFirst().compactMap(Entry.init)
-    }
-}
-
-extension FoodProductionMap.Entry {
-    init?(_ line: some StringProtocol) {
-        let nums = line.components(separatedBy: " ")
-            .compactMap(I.init)
-        guard nums.count == 3 else {
-            print("bad line? \(line)")
-            return nil
-        }
-
-        self.sourceRange = ClosedRange(uncheckedBounds: (nums[1], nums[1] + nums[2]))
-        self.destinationStart = nums[0]
-    }
-}
-
 verify([
     (testInput, 35),
     (input, 484023871)
 ]) {
-    FoodProductionPlan($0).part1()
+    FoodProductionPlan<Int>($0).part1()
+}
+
+/**
+ # --- Part Two ---
+
+ Everyone will starve if you only plant such a small number of seeds. Re-reading the almanac, it looks like the `seeds:` line actually describes **ranges of seed numbers.**
+
+ The values on the initial seeds: line come in pairs. Within each pair, the first value is the **start** of the range and the second value is the **length** of the range. So, in the first line of the example above:
+
+ `seeds: 79 14 55 13`
+
+ This line describes two ranges of seed numbers to be planted in the garden. The first range starts with seed number `79` and contains `14` values: `79`, `80`, ..., `91`, `92`. The second range starts with seed number `55` and contains `13` values: `55`, `56`, ..., `66`, `67`.
+
+ Now, rather than considering four seed numbers, you need to consider a total of `27` seed numbers.
+
+ In the above example, the lowest location number can be obtained from seed number `82`, which corresponds to soil `84`, fertilizer `84`, water `84`, light `77`, temperature `45`, humidity `46`, and location `46`. So, the lowest location number is `46`.
+
+ Consider all of the initial seed numbers listed in the ranges on the first line of the almanac. **What is the lowest location number that corresponds to any of the initial seed numbers?**
+ */
+
+
+verify([
+    (testInput, 46),
+    (input, 46294175)
+]) {
+    FoodProductionPlan<Int>($0).part2()
 }
 
 //: [Next](@next)
