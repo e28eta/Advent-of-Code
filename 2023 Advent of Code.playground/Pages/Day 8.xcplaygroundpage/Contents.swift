@@ -173,60 +173,39 @@ ZZZ = (ZZZ, ZZZ)
  */
 
 extension Network {
-    public func part2() -> Int {
-        var currentNodes = nodes.keys
-            .filter {
-                $0.suffix(1) == "A"
-            }
-            .map {
-                nodes[$0]!
-            }
+    func cycleLength(from start: String) -> Int {
+        var node = nodes[start]!
 
-        for n in currentNodes {
-            print("start node \(n.label)")
-        }
-        for n in nodes.keys.filter({$0.suffix(1) == "Z" }) {
-            print("possible end node \(n)")
-        }
-
-        /*
-         Looks like this is computationally infeasible
-
-         New idea: for each starting node, figure out the
-         cycle lengths where it reaches possible end nodes
-
-
-         Maybe a single cycle, maybe multiple?
-
-         Seems familiar to previous problem I've recently
-         done, where 2nd time through cycled directions
-         has a different start point,
-         but maybe some point it'll converge?
-
-         for each (node + cycle of directions) -> end node
-         with potential "goal nodes" in the middle
-
-         figure out equation(s) / sequence of numbers for
-         each of the 6 starting nodes independently.
-         There's a total of 6 ending nodes, problem statement says they're equal in number
-         Doesn't specifically say they are disjoint
-
-         and then LCM across the collection to find shortest
-         */
+        var firstTerminalLabel: String?
+        var firstTerminalOffset: Int?
 
         for (offset, dir) in directions.cycled().enumerated() {
+            node = nodes[node[dir]]!
 
-            currentNodes = currentNodes.map {
-                nodes[$0[dir]]!
-            }
+            if node.label.suffix(1) == "Z" {
+                if let firstTerminalLabel, let firstTerminalOffset {
+                    assert(firstTerminalLabel == node.label, "nodes form distinct graphs")
+                    // I never guessed this would be true, but after checking that it's true I can rely on it...
+                    assert((offset + 1) == 2 * firstTerminalOffset, "num steps from start to terminal is same as terminal back to same terminal")
 
-            if currentNodes.allSatisfy({ $0.label.suffix(1) == "Z" }) {
-                return offset + 1
+                    return firstTerminalOffset
+                } else {
+                    firstTerminalLabel = node.label
+                    firstTerminalOffset = offset + 1
+                }
             }
         }
 
-        // infinite directions, dead code
+        // dead code, cycled() is infinite
         return -1
+    }
+
+    public func part2() -> Int {
+        let cycleLengths = nodes.keys
+            .filter { $0.suffix(1) == "A" }
+            .map(cycleLength(from:))
+
+        return lcm(cycleLengths)
     }
 }
 
@@ -243,7 +222,7 @@ LR
 22Z = (22B, 22B)
 XXX = (XXX, XXX)
 """, 6),
-    (input, 0),
+    (input, 13385272668829),
 ]) {
     Network($0).part2()
 }
