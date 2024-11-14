@@ -121,10 +121,11 @@ struct GalaxyData {
 
     let emptyRows: Set<Int>
     let emptyColumns: Set<Int>
+    let expansionFactor: Int
 
     let galaxies: Set<GridIndex>
 
-    init(_ input: String) {
+    init(_ input: String, expansionFactor: Int = 2) {
         self.grid = Grid(
             input.lines().map {
                 $0.compactMap(ImageData.init)
@@ -143,9 +144,10 @@ struct GalaxyData {
         self.emptyRows = emptyRows
         self.emptyColumns = emptyColumns
         self.galaxies = galaxies
+        self.expansionFactor = expansionFactor
     }
 
-    func part1() -> Int {
+    func sumOfLengths() -> Int {
         var sum = 0
 
         for pairs in galaxies.combinations(ofCount: 2) {
@@ -158,8 +160,8 @@ struct GalaxyData {
 
             sum += (maxRow - minRow
                     + maxCol - minCol
-                    + numEmptyRows
-                    + numEmptyCols)
+                    + numEmptyRows * (expansionFactor - 1)
+                    + numEmptyCols * (expansionFactor - 1))
         }
 
         return sum
@@ -181,7 +183,49 @@ verify([("""
         (input, 9312968)
 ], {
     let data = GalaxyData($0)
-    return data.part1()
+    return data.sumOfLengths()
+})
+
+/**
+ # --- Part Two ---
+
+ The galaxies are much **older** (and thus much **farther apart**) than the researcher initially estimated.
+
+ Now, instead of the expansion you did before, make each empty row or column **one million times** larger. That is, each empty row should be replaced with `1000000` empty rows, and each empty column should be replaced with `1000000` empty columns.
+
+ (In the example above, if each empty row or column were merely `10` times larger, the sum of the shortest paths between every pair of galaxies would be `1030`. If each empty row or column were merely `100` times larger, the sum of the shortest paths between every pair of galaxies would be `8410`. However, your universe will need to expand far beyond these values.)
+
+ Starting with the same initial image, expand the universe according to these new rules, then find the length of the shortest path between every pair of galaxies. **What is the sum of these lengths?**
+ */
+
+verify([(("""
+...#......
+.......#..
+#.........
+..........
+......#...
+.#........
+.........#
+..........
+.......#..
+#...#.....
+""", 10), 1030),
+        (("""
+...#......
+.......#..
+#.........
+..........
+......#...
+.#........
+.........#
+..........
+.......#..
+#...#.....
+""", 100), 8410),
+        ((input, 1_000_000), 597714117556)
+], {
+    let data = GalaxyData($0.0, expansionFactor: $0.1)
+    return data.sumOfLengths()
 })
 
 //: [Next](@next)
