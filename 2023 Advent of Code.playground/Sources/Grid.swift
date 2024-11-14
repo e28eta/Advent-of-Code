@@ -95,6 +95,7 @@ public struct Grid<E>: RandomAccessCollection, MutableCollection {
     var contents: [[E]]
     public let width: Int
     public let height: Int
+    let connectivity: NeighborConnectivity
     let neighbors: [[Index]]
 
     public let startIndex: Index
@@ -119,6 +120,7 @@ public struct Grid<E>: RandomAccessCollection, MutableCollection {
         self.startIndex = startIndex
         self.endIndex = endIndex
 
+        self.connectivity = connectivity
         neighbors = (startIndex..<endIndex).map { position in
             return connectivity.possibleNeighbors().compactMap {
                 position.advanced(by: $0, limitedTo: endIndex)
@@ -172,5 +174,14 @@ extension Grid: CustomStringConvertible where Grid.Element: CustomStringConverti
 extension Grid where Grid.Element: Equatable {
     public func neighborCount(position: Index, expected: Element) -> Int {
         return neighbors[position.index].filter { self[$0] == expected }.count
+    }
+}
+
+extension Grid {
+    public func transformElements<T>(_ transform: (Grid.Element) throws -> T) rethrows -> Grid<T> {
+
+        return Grid<T>(
+            try contents.map({ try $0.map(transform) }),
+            connectivity: connectivity)
     }
 }
