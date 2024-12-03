@@ -87,4 +87,86 @@ verify([
     (input, 369)
 ], part1)
 
+/**
+ # --- Part Two ---
+
+ The engineers are surprised by the low number of safe reports until they realize they forgot to tell you about the Problem Dampener.
+
+ The Problem Dampener is a reactor-mounted module that lets the reactor safety systems **tolerate a single bad level** in what would otherwise be a safe report. It's like the bad level never happened!
+
+ Now, the same rules apply as before, except if removing a single level from an unsafe report would make it safe, the report instead counts as safe.
+
+ More of the above example's reports are now safe:
+
+ - `7 6 4 2 1`: **Safe** without removing any level.
+ - `1 2 7 8 9`: **Unsafe** regardless of which level is removed.
+ - `9 7 6 2 1`: **Unsafe** regardless of which level is removed.
+ - `1 3 2 4 5`: **Safe** by removing the second level, `3`.
+ - `8 6 4 4 1`: **Safe** by removing the third level, `4`.
+ - `1 3 6 7 9`: **Safe** without removing any level.
+
+ Thanks to the Problem Dampener, `4` reports are actually **safe!**
+
+ Update your analysis by handling situations where the Problem Dampener can remove a single level from unsafe reports. **How many reports are now safe?**
+ */
+
+func part2(_ input: String) -> Int {
+    parse(input).count { report in
+        let tail = report.dropFirst()
+
+        let ascendingCondition = { $0 < $1 && (1...3).contains($1 - $0) }
+        let descendingCondition = { $1 < $0 && (1...3).contains($0 - $1) }
+
+        // just check both conditions against each report, since the first pair might
+        // be in the wrong order
+        for condition in [ascendingCondition, descendingCondition] {
+            let failing = zip(report, tail)
+                .enumerated()
+                .filter { (idx, pair) in
+                    !condition(pair.0, pair.1)
+                }
+
+            if failing.isEmpty {
+                // all safe
+                return true
+            } else if failing.count > 2 {
+                // too many failures
+                continue
+            } else if failing.count == 2 && failing.first!.offset + 1 != failing.last!.offset {
+                // failures aren't adjacent, removing one won't cure it
+                continue
+            } else {
+                if failing.count == 1 {
+                    let removingFirst = report.removingSubranges(RangeSet(IndexSet(integer: failing.first!.offset)))
+
+                    if zip(removingFirst, removingFirst.dropFirst())
+                        .allSatisfy(condition) {
+                        return true
+                    }
+                } else if failing.count == 2 {
+                    let removingMiddle = report.removingSubranges(RangeSet(IndexSet(integer: failing.last!.offset)))
+
+                    if zip(removingMiddle, removingMiddle.dropFirst()).allSatisfy(condition) {
+                        return true
+                    }
+                }
+
+                // might work for count == 1 or 2
+                let removingLast = report.removingSubranges(RangeSet(IndexSet(integer: failing.last!.offset + 1)))
+
+                if zip(removingLast, removingLast.dropFirst()).allSatisfy(condition) {
+                    return true
+                }
+            }
+        }
+
+        return false
+    }
+}
+
+verify([
+    (testInput, 4),
+    (input, 428)
+], part2)
+
 //: [Next](@next)
