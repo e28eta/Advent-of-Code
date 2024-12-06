@@ -116,4 +116,88 @@ MXMXAXMASX
     return search.xmasMatches()
 }
 
+/**
+ # --- Part Two ---
+
+ The Elf looks quizzically at you. Did you misunderstand the assignment?
+
+ Looking for the instructions, you flip over the word search to find that this isn't actually an `XMAS` puzzle; it's an `X-MAS` puzzle in which you're supposed to find two `MAS` in the shape of an `X`. One way to achieve that is like this:
+
+ ```
+ M.S
+ .A.
+ M.S
+ ```
+
+ Irrelevant characters have again been replaced with `.` in the above diagram. Within the `X`, each `MAS` can be written forwards or backwards.
+
+ Here's the same example from before, but this time all of the `X-MAS`es have been kept instead:
+
+ ```
+ .M.S......
+ ..A..MSMS.
+ .M.S.MAA..
+ ..A.ASMSM.
+ .M.S.M....
+ ..........
+ S.S.S.S.S.
+ .A.A.A.A..
+ M.M.M.M.M.
+ ..........
+ ```
+
+ In this example, an `X-MAS` appears `9` times.
+
+ Flip the word search from the instructions back over to the word search side and try again. **How many times does an X-MAS appear?**
+ */
+
+extension Grid {
+    public subscript(position: Index, direction: (Int, Int)) -> E? {
+        guard let neighbor = position.advanced(
+            by: direction,
+            limitedTo: endIndex
+        ) else { return nil }
+
+        return self[neighbor]
+    }
+}
+
+extension WordSearch {
+    func x_masMatches() -> Int {
+        var sum = 0
+        let nw = (-1, -1), sw = (1, -1), ne = (-1, 1), se = (1, 1)
+
+        for idx in grid.indices where grid[idx] == "A" {
+            switch (grid[idx, nw], grid[idx, se], grid[idx, ne], grid[idx, sw]) {
+            case ("M", "S", "M", "S"),
+                ("M", "S", "S", "M"),
+                ("S", "M", "M", "S"),
+                ("S", "M", "S", "M"):
+                sum += 1
+            default: continue
+            }
+        }
+
+        return sum
+    }
+}
+
+verify([
+    ("""
+MMMSXXMASM
+MSAMXMSMSA
+AMXSXMAAMM
+MSAMASMSMX
+XMASAMXAMM
+XXAMMXXAMA
+SMSMSASXSS
+SAXAMASAAA
+MAMMMXMMMM
+MXMXAXMASX
+""", 9),
+    (input, 2003)
+]) {
+    let search = WordSearch($0)
+    return search.x_masMatches()
+}
 //: [Next](@next)
