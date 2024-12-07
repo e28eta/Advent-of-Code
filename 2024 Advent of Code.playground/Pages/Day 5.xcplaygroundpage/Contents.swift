@@ -120,69 +120,68 @@ let testInput = """
 
 let input = try readResourceFile("input.txt")
 
-struct PageOrderingRules {
+struct PageQueue {
     // for each page, what pages must come after it (aka: cannot precede it)
     let rules: [Int: Set<Int>]
 
-    init(_ string: some StringProtocol) {
-        let rules: [(Int, Int)] = string.lines().compactMap { line in
+    let updates: [[Int]]
+    let correctlyOrderedUpdates: [[Int]]
+    let incorrectlyOrderedUpdates: [[Int]]
+
+    init?(_ input: String) {
+        guard let split = input.splitOnce(separator: "\n\n") else { return nil }
+
+        self.rules = split.0.lines().compactMap { line -> (Int, Int)? in
             guard let (firstString, secondString) = line.splitOnce(separator: "|"),
                   let first = Int(firstString),
                   let second = Int(secondString)
             else { return nil }
 
             return (first, second)
+        }.reduce(into: [:]) { partialResult, rule in
+            partialResult[rule.0, default: Set<Int>()].insert(rule.1)
         }
-        self.rules = rules.reduce(into: [:]) { d, r in
-            d[r.0, default: Set<Int>()].insert(r.1)
+
+        self.updates = split.1.lines().compactMap { line in
+            let pageNumbers = line.components(separatedBy: ",").compactMap { Int($0) }
+            return pageNumbers.isEmpty ? nil : pageNumbers
         }
-    }
-}
 
-struct UpdateContents {
-    let pageNumbers: [Int]
+        var correct: [[Int]] = []
+        var incorrect: [[Int]] = []
 
-    init?(_ line: some StringProtocol) {
-        pageNumbers = line.components(separatedBy: ",").compactMap { Int($0) }
-        if pageNumbers.isEmpty { return nil }
-    }
-}
+        nextUpdate: for update in updates {
+            var pagesPrinted = Set<Int>()
 
-func parse(_ input: String) -> (PageOrderingRules, [UpdateContents])? {
-    guard let split = input.splitOnce(separator: "\n\n") else { return nil }
-    let rules = PageOrderingRules(split.0)
-    let contents = split.1.lines().compactMap { UpdateContents($0) }
-    return (rules, contents)
-}
-
-parse(testInput)
-
-func part1(_ input: String) -> Int {
-    guard let (rules, contents) = parse(input) else { return 0 }
-    var sum = 0
-
-    nextUpdate: for update in contents {
-        var pagesPrinted = Set<Int>()
-
-        for page in update.pageNumbers {
-            if !rules.rules[page, default: Set()].intersection(pagesPrinted).isEmpty {
-                // already printed a page that the rules say we should not have
-                // this update is in the wrong order
-                continue nextUpdate
+            for page in update {
+                if !rules[page, default: Set()].intersection(pagesPrinted).isEmpty {
+                    // already printed a page that the rules say we should not have.
+                    // This update is in the wrong order
+                    incorrect.append(update)
+                    continue nextUpdate
+                }
+                pagesPrinted.insert(page)
             }
-            pagesPrinted.insert(page)
+
+            correct.append(update)
         }
 
-        // add the middle page number
-        sum += update.pageNumbers[update.pageNumbers.count / 2]
+        self.correctlyOrderedUpdates = correct
+        self.incorrectlyOrderedUpdates = incorrect
     }
 
-    return sum
+    func part1() -> Int {
+        return correctlyOrderedUpdates.reduce(0) { sum, update in
+            sum + update[update.count / 2]
+        }
+    }
 }
 
 verify([
     (testInput, 143),
     (input, 7307)
-], part1)
+]) {
+    return PageQueue($0)?.part1() ?? 0
+}
 
 //: [Next](@next)
